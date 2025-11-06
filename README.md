@@ -1,6 +1,7 @@
 # DeepSeek OCR 服务器
 
 这是一个为 DeepSeek OCR 模型提供 OpenAI 兼容 API 的 FastAPI 服务器。
+请先访问DeepSeek OCR仓库，安装DeepSeek OCR.
 
 ## 功能特性
 
