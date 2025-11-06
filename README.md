@@ -1,7 +1,7 @@
 # DeepSeek OCR 服务器
 
 这是一个为 DeepSeek OCR 模型提供 OpenAI 兼容 API 的 FastAPI 服务器。
-请先访问DeepSeek OCR仓库，安装DeepSeek OCR.
+从DeepSeek-OCR项目fork而来，请先访问DeepSeek OCR项目仓库，安装DeepSeek OCR支持模块。
 
 ## 功能特性
 
@@ -54,6 +54,11 @@ python -m server.main
     }
   ]
 }
+```
+
+使用测试shell进行测试
+```
+test_curl_commands.sh -c /path/yourimage.jpg
 ```
 
 #### 2. 简单 OCR 接口

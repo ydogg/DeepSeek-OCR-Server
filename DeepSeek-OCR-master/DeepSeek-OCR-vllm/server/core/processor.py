@@ -17,8 +17,8 @@ parent_dir = os.path.dirname(current_dir)
 project_root = os.path.dirname(parent_dir)
 sys.path.extend([parent_dir, project_root])
 
-from vllm import AsyncLLMEngine, SamplingParams
-from vllm.engine.arg_utils import AsyncEngineArgs
+from vllm import LLMEngine, SamplingParams
+from vllm.engine.arg_utils import EngineArgs
 from vllm.utils import Device
 from vllm.engine.async_llm_engine import AsyncEngineDeadError
 
@@ -42,7 +42,7 @@ class ModelWorker:
         """Initialize a single model instance with error handling"""
         print(f"Initializing model with path: {MODEL_PATH}")
         
-        engine_args = AsyncEngineArgs(
+        engine_args = EngineArgs(
             model=MODEL_PATH,
             hf_overrides={"architectures": ["DeepseekOCRForCausalLM"]},
             block_size=256,
@@ -64,7 +64,7 @@ class ModelWorker:
                 finally:
                     self.engine = None
             
-            self.engine = AsyncLLMEngine.from_engine_args(engine_args)
+            self.engine = LLMEngine.from_engine_args(engine_args)
         except Exception as e:
             print(f"Failed to initialize vLLM engine: {e}")
             self.engine = None
@@ -79,7 +79,7 @@ class ModelWorker:
             skip_special_tokens=False,
         )
 
-    async def process_image_with_model(self, image: Image.Image, prompt: str = None) -> str:
+    def process_image_with_model(self, image: Image.Image, prompt: str = None) -> str:
         """Process image using the model"""
         # Check if engine is initialized
         if self.engine is None:
@@ -109,11 +109,17 @@ class ModelWorker:
         else:
             raise ValueError('Prompt is empty!')
             
+        # Add request to engine
+        self.engine.add_request(request_id, request, self.sampling_params)
+        
         final_output = ""
         try:
-            async for request_output in self.engine.generate(request, self.sampling_params, request_id):
-                if request_output.outputs:
-                    final_output = request_output.outputs[0].text
+            # Process the request using the engine's step method
+            while self.engine.has_unfinished_requests():
+                request_outputs = self.engine.step()
+                for request_output in request_outputs:
+                    if request_output.request_id == request_id and request_output.outputs:
+                        final_output = request_output.outputs[0].text
         except Exception as e:
             # Re-raise the exception to be handled by the caller
             raise RuntimeError(f"Error during model generation: {str(e)}") from e
@@ -122,10 +128,6 @@ class ModelWorker:
 
     def run(self):
         """Worker thread function with improved error handling"""
-        # Create a new event loop for this thread
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        
         # Initialize model
         try:
             self.initialize_model()
@@ -133,7 +135,6 @@ class ModelWorker:
             print(f"Failed to initialize model: {e}")
             # Set shutdown event to prevent other workers from starting
             self.shutdown_event.set()
-            loop.close()
             return
             
         print(f"Model initialized in worker thread {threading.current_thread().ident}")
@@ -146,7 +147,7 @@ class ModelWorker:
                 
                 try:
                     # Process the request
-                    result = loop.run_until_complete(self.process_image_with_model(ocr_request.image, ocr_request.prompt))
+                    result = self.process_image_with_model(ocr_request.image, ocr_request.prompt)
                     
                     # Clean ref and det tags if enabled
                     final_result = result
@@ -158,17 +159,8 @@ class ModelWorker:
                         "status": "completed",
                         "result": final_result
                     }
-                except AsyncEngineDeadError as e:
-                    # Handle AsyncEngineDeadError specifically
-                    print(f"AsyncEngineDeadError detected: {e}")
-                    
-                    # Store error for this request
-                    self.result_dict[ocr_request.request_id] = {
-                        "status": "error",
-                        "error": f"Engine dead error: {str(e)}"
-                    }
                 except Exception as e:
-                    # Handle all other exceptions
+                    # Handle all exceptions
                     print(f"Error processing request: {e}")
                     
                     # Store error for this request
@@ -187,8 +179,6 @@ class ModelWorker:
                 print(f"Worker thread error: {e}")
                 continue
         
-        # Close the event loop when shutting down
-        loop.close()
         print(f"Worker thread {threading.current_thread().ident} shutting down")
 
 
