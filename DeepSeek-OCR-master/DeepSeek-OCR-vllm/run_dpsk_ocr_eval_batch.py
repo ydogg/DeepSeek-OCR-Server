@@ -144,8 +144,20 @@ if __name__ == "__main__":
 
     for output, image in zip(outputs_list, images_path):
 
+        # wangyage modified.
+        # 更通用的文件名处理
+        filename = os.path.basename(image)
+        name, ext = os.path.splitext(filename)
+   
+        # 生成输出路径（不依赖于特定扩展名）
+        mmd_det_path = os.path.join(output_path, name + '_det.md')
+        mmd_path = os.path.join(output_path, name + '.md')
+        print(mmd_det_path)
+        print(mmd_path)
+
         content = output.outputs[0].text
-        mmd_det_path = output_path + image.split('/')[-1].replace('.jpg', '_det.md')
+        #mmd_det_path = output_path + image.split('/')[-1].replace('.jpg', '_det.md')
+
 
         with open(mmd_det_path, 'w', encoding='utf-8') as afile:
             afile.write(content)
@@ -155,7 +167,7 @@ if __name__ == "__main__":
         for idx, a_match_other in enumerate(tqdm(mathes_other, desc="other")):
             content = content.replace(a_match_other, '').replace('\n\n\n\n', '\n\n').replace('\n\n\n', '\n\n').replace('<center>', '').replace('</center>', '')
         
-        mmd_path = output_path + image.split('/')[-1].replace('.jpg', '.md')
+        #mmd_path = output_path + image.split('/')[-1].replace('.jpg', '.md')
 
         with open(mmd_path, 'w', encoding='utf-8') as afile:
             afile.write(content)

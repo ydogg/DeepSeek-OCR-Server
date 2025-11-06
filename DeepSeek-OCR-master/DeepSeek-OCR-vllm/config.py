@@ -5,6 +5,9 @@
 # Large: base_size = 1280, image_size = 1280, crop_mode = False
 # Gundam: base_size = 1024, image_size = 640, crop_mode = True
 
+# Server configuration
+MAX_WORKER_THREADS = 1  # Default to 1, max 2
+
 BASE_SIZE = 1024
 IMAGE_SIZE = 640
 CROP_MODE = True
@@ -14,15 +17,20 @@ MAX_CONCURRENCY = 100 # If you have limited GPU memory, lower the concurrency co
 NUM_WORKERS = 64 # image pre-process (resize/padding) workers 
 PRINT_NUM_VIS_TOKENS = False
 SKIP_REPEAT = True
-MODEL_PATH = 'deepseek-ai/DeepSeek-OCR' # change to your model path
+# Whether to clean ref and det tags from the output
+CLEAN_REF_TAGS = False  # Set to True to remove ref and det tags from the output
+
+#MODEL_PATH = 'deepseek-ai/DeepSeek-OCR' # change to your model path
+MODEL_PATH = '/home/ai/.cache/modelscope/hub/models/deepseek-ai/DeepSeek-OCR' # change to your model path
 
 # TODO: change INPUT_PATH
 # .pdf: run_dpsk_ocr_pdf.py; 
 # .jpg, .png, .jpeg: run_dpsk_ocr_image.py; 
 # Omnidocbench images path: run_dpsk_ocr_eval_batch.py
 
-INPUT_PATH = '' 
-OUTPUT_PATH = ''
+#INPUT_PATH = '/home/ai/deepseek-ocr/images/pic0682.jpg' 
+INPUT_PATH = '/home/ai/deepseek-ocr/pdf-input/' 
+OUTPUT_PATH = '/home/ai/deepseek-ocr/pdf-output/'
 
 PROMPT = '<image>\n<|grounding|>Convert the document to markdown.'
 # PROMPT = '<image>\nFree OCR.'
