@@ -37,9 +37,8 @@ if [ ! -f "$IMAGE_PATH" ]; then
 fi
 
 SERVER_URL="http://localhost:8888"
-
-TEMP_JSON_FILE="./ocr_request.json"
-TEMP_RESPONSE_FILE="./ocr_response.json"
+TEMP_JSON_FILE="./.ocr_request.json"
+TEMP_RESPONSE_FILE="./.ocr_response.json"
 
 IMAGE_BASE64=$(base64 -i "$IMAGE_PATH")
 
