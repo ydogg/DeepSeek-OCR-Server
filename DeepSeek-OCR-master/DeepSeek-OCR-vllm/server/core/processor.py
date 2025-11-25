@@ -91,6 +91,7 @@ class ModelWorker:
             
         # Process image
         if '<image>' in prompt:
+        #if image:
             image_features = DeepseekOCRProcessor().tokenize_with_images(images=[image], bos=True, eos=True, cropping=CROP_MODE)
         else:
             image_features = ''
@@ -98,6 +99,7 @@ class ModelWorker:
         request_id = f"request-{int(time.time() * 1000000)}-{uuid.uuid4().hex[:8]}"
         
         if image_features and '<image>' in prompt:
+        #if image:
             request = {
                 "prompt": prompt,
                 "multi_modal_data": {"image": image_features}
@@ -108,7 +110,9 @@ class ModelWorker:
             }
         else:
             raise ValueError('Prompt is empty!')
-            
+
+        #print(request)
+
         # Add request to engine
         self.engine.add_request(request_id, request, self.sampling_params)
         

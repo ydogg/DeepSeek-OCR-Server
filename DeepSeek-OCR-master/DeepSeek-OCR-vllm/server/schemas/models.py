@@ -1,10 +1,26 @@
 from pydantic import BaseModel
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Union
+
+
+
+
+class ImageUrl(BaseModel):
+    url: str
+
+
+class ContentImage(BaseModel):
+    type: str
+    image_url: ImageUrl
+
+
+class ContentText(BaseModel):
+    type: str
+    text: str
 
 
 class ChatMessage(BaseModel):
     role: str
-    content: str
+    content: Union[str, List[Union[ContentImage, ContentText]]]
 
 
 class ChatCompletionRequest(BaseModel):

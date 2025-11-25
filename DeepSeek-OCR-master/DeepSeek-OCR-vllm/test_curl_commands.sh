@@ -49,7 +49,18 @@ cat > "$TEMP_JSON_FILE" <<EOF
   "messages": [
     {
       "role": "user",
-      "content": "data:image/jpeg;base64,$IMAGE_BASE64"
+      "content": [
+        {
+          "type": "image_url",
+          "image_url": {
+            "url": "data:image/jpeg;base64,$IMAGE_BASE64"
+          }
+        },
+        {
+          "type": "text",
+          "text": "Free OCR."
+        }
+      ]
     }
   ]
 }

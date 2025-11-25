@@ -3,10 +3,13 @@
 
 # Server address and port
 ADDRESS = "0.0.0.0"
-PORT = 8888
+PORT = 8000
 
 # Maximum number of worker threads (default: 1, max: 2)
 MAX_WORKER_THREADS = 1
+
+# Whether to enable streaming mode for responses
+STREAMING_MODE = False
 
 # Whether to clean ref and det tags from the output
 CLEAN_REF_TAGS = True  # Set to True to remove ref and det tags from the output

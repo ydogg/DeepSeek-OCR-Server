@@ -18,11 +18,12 @@ from deepseek_ocr import DeepseekOCRForCausalLM
 from vllm.model_executor.models.registry import ModelRegistry
 
 from server.schemas.models import (
-    ChatMessage, 
-    ChatCompletionRequest, 
-    ChatCompletionResponseChoice, 
-    ChatCompletionResponse, 
-    OCRRequest
+    ChatMessage,
+    ChatCompletionRequest,
+    ChatCompletionResponseChoice,
+    ChatCompletionResponse,
+    OCRRequest,
+    ContentText
 )
 from server.core.processor import OCRProcessor, load_image_from_base64
 from server.core.utils import clean_ref_tags
@@ -57,53 +58,52 @@ async def create_chat_completion(request: ChatCompletionRequest):
     # Extract image from messages (assuming it's in the first user message)
     image_data = None
     text_prompt = None
-    
+
     for message in request.messages:
         if message.role == "user":
-            content = message.content
-            # Check if content contains base64 image data
-            if "data:image/" in content:
-                # Extract base64 image data
-                start = content.find("base64,") + 7
-                end = content.find('"', start)
-                if end == -1:
-                    end = len(content)
-                image_data = content[start:end]
-            else:
-                text_prompt = content
-    
+            # New format: content is an array of objects
+            for item in message.content:
+                if item.type == "image_url":
+                    url = item.image_url.url
+                    if url.startswith("data:image/"):
+                        # Extract base64 image data
+                        start = url.find("base64,") + 7
+                        image_data = url[start:]
+                elif item.type == "text":
+                    text_prompt = item.text
+
     if image_data is None:
         raise HTTPException(status_code=400, detail="No image data found in request")
-    
+
     try:
         # Load image
         image = load_image_from_base64(image_data)
-        
+
         # Create request
         request_id = f"req-{uuid.uuid4().hex[:12]}"
         ocr_request = OCRRequest(request_id, image, text_prompt)
-        
+
         # Add request to queue
         processor.submit_request(ocr_request)
-        
+
         # Wait for result
         result = await processor.wait_for_result(request_id)
-        
+
         if result["status"] == "error":
             raise HTTPException(status_code=500, detail=f"Error processing image: {result['error']}")
-        
+
         # Clean ref and det tags if enabled
         final_result = result["result"]
         if CLEAN_REF_TAGS:
             final_result = clean_ref_tags(final_result)
-        
+
         # Create response
         choice = ChatCompletionResponseChoice(
             index=0,
-            message=ChatMessage(role="assistant", content=final_result),
+            message=ChatMessage(role="assistant", content=str(final_result)),
             finish_reason="stop"
         )
-        
+
         return ChatCompletionResponse(
             id=f"chatcmpl-{uuid.uuid4().hex[:12]}",
             created=int(time.time()),
@@ -142,7 +142,7 @@ async def ocr_image(
         if CLEAN_REF_TAGS:
             final_result = clean_ref_tags(final_result)
             
-        return JSONResponse(content={"result": final_result})
+        return JSONResponse(content={"result": str(final_result)})
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing image: {str(e)}")
 
