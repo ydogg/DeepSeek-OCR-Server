@@ -159,7 +159,7 @@ curl -X POST "http://localhost:8000/v1/chat/completions" \\
 
 @app.post("/v1/chat/completions", response_model=ChatCompletionResponse)
 async def create_chat_completion(request: ChatCompletionRequest):
-    """OpenAI compatible chat completion endpoint"""
+    """OpenAI compatible chat completion endpoint - equivalent to /v1/ocr with image_clean level"""
     print("[OCR Main] Received OpenAI compatible chat completion request")
 
     # Extract image from messages (assuming it's in the first user message)
@@ -193,7 +193,7 @@ async def create_chat_completion(request: ChatCompletionRequest):
         print("[OCR Main] Loading image from base64 data")
         image = load_image_from_base64(image_data)
 
-        # Create request
+        # Create request - equivalent to /v1/ocr with image_clean level
         request_id = f"req-{uuid.uuid4().hex[:12]}"
         ocr_request = OCRRequest(request_id, image, prompt)
         print(f"[OCR Main] Created OCR request with ID: {request_id}")
@@ -210,10 +210,63 @@ async def create_chat_completion(request: ChatCompletionRequest):
             print(f"[OCR Main] OCR processing failed: {result['error']}")
             raise HTTPException(status_code=500, detail=f"Error processing image: {result['error']}")
 
-        # Clean ref and det tags (always for OpenAI compatible endpoint)
-        final_result = result["result"]
-        final_result = clean_ref_tags(final_result)
-        print(f"[OCR Main] OCR processing completed, cleaned result length: {len(final_result)}")
+        # Store raw result
+        raw_result = result["result"]
+        print(f"[OCR Main] OCR processing completed, result length: {len(raw_result)}")
+
+        # Initialize variables early
+        processed_result = ''
+        vl_analyzed_result = ''
+        final_result = ''
+        request_output_path = None
+        response_data = {}  # Initialize response_data early
+        timestamp = None
+
+        # Process with image_clean level (equivalent to /v1/ocr with image_clean level)
+        # Create a temporary directory for this request with timestamp
+        timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+        request_output_path = f"/tmp/ocr_{timestamp}_{request_id}"
+
+        # Ensure directory exists
+        os.makedirs(request_output_path, exist_ok=True)
+        os.makedirs(f"{request_output_path}/images", exist_ok=True)
+
+        # Save original result for processing
+        with open(f"{request_output_path}/result_ori.mmd", "w", encoding="utf-8") as f:
+            f.write(raw_result)
+
+        # Step 1: 图像提取 (Image extraction)
+        print(f"[OCR Main] Extracting images for request {request_id}")
+        img = Image.open(BytesIO(base64.b64decode(image_data))).convert('RGB')
+        extracted_images = extract_images_from_markdown(raw_result, img, request_output_path, request_id)
+        print(f"[OCR Main] Extracted {len(extracted_images)} images for request {request_id}")
+
+        # Save extracted images result
+        with open(f"{request_output_path}/result_extracted.mmd", "w", encoding="utf-8") as f:
+            f.write(raw_result)
+
+        # Step 2: 边界框分析 (Bounding box analysis)
+        # Only do this if needed for drawing boxes or analyzing images
+        print(f"[OCR Main] Performing bounding box analysis for request {request_id}")
+        processed_result = process_bounding_boxes(
+            None, img, raw_result, request_output_path, request_id
+        )
+        print(f"[OCR Main] Bounding box analysis completed for request {request_id}")
+
+        # Save processed result
+        with open(f"{request_output_path}/result_boxing.mmd", "w", encoding="utf-8") as f:
+            f.write(processed_result)
+
+        # Step 3: VL分析（仅用于image_clean模式）
+        print(f"[OCR Main] Starting VL analysis for request {request_id}")
+        vl_analyzed_result = await analyze_extracted_images(processed_result, f"{timestamp}_{request_id}")
+        print(f"[OCR Main] VL analysis completed for request {request_id}")
+        # Use VL analyzed result as the final result
+        final_result = vl_analyzed_result
+
+        # Save VL analyzed result
+        with open(f"{request_output_path}/result_vl.mmd", "w", encoding="utf-8") as f:
+            f.write(vl_analyzed_result)
 
         # Create response
         choice = ChatCompletionResponseChoice(
@@ -228,10 +281,12 @@ async def create_chat_completion(request: ChatCompletionRequest):
             model=request.model,
             choices=[choice]
         )
-        print(f"[OCR Main] Returning OpenAI compatible response")
+
+        print(f"[OCR Main] OpenAI compatible response created with result length: {len(final_result)}")
         return response
+
     except Exception as e:
-        print(f"[OCR Main] Exception in OpenAI compatible endpoint: {str(e)}")
+        print(f"[OCR Main] Exception in OCR processing: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error processing image: {str(e)}")
 
 class OCRImageRequest(BaseModel):
