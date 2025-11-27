@@ -19,7 +19,7 @@ from server.schemas.models import (
     ImageRequest
 )
 from server.core.processor import OCRProcessor, load_image_from_base64
-from server.config import DEFAULT_OCR_PROMPT
+from server.config import DEFAULT_OCR_PROMPT, ADDRESS, PORT
 
 # Import services
 from server.services.ocr_service import process_ocr_request, extract_image_from_openai_request, create_mock_ocr_request
@@ -39,14 +39,22 @@ ModelRegistry.register_model("DeepseekOCRForCausalLM", DeepseekOCRForCausalLM)
 # Global processor
 processor = OCRProcessor()
 
+print("Initializing processor...")
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan event handler for startup and shutdown events"""
+    print("Starting up...")
     # Startup event
     processor.start_workers()
+    print("Workers started")
     yield
     # Shutdown event
+    print("Shutting down...")
     processor.stop_workers()
+    print("Workers stopped")
+
+print("Creating FastAPI app...")
 
 app = FastAPI(
     title="DeepSeek OCR API",
@@ -272,3 +280,9 @@ def draw_bounding_boxes(image, refs, output_path):
     
     # Save image
     image.save(output_path)
+
+
+if __name__ == "__main__":
+    import uvicorn
+    print("Starting DeepSeek OCR server...")
+    uvicorn.run(app, host=ADDRESS, port=PORT)
