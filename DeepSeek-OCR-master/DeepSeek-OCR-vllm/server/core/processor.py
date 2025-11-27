@@ -80,7 +80,7 @@ class ModelWorker:
             skip_special_tokens=False,
         )
 
-    def process_image_with_model(self, image: Image.Image, prompt: str = None) -> str:
+    async def process_image_with_model(self, image: Image.Image, prompt: str = None) -> str:
         """Process image using the model"""
         print(f"[OCR] Starting image processing with prompt length: {len(prompt) if prompt else 0}")
 
@@ -137,12 +137,17 @@ class ModelWorker:
 
     def run(self):
         """Worker thread function with improved error handling"""
+        # Create a new event loop for this thread
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
         # Initialize model
         try:
             self.initialize_model()
         except Exception as e:
             # Set shutdown event to prevent other workers from starting
             self.shutdown_event.set()
+            loop.close()
             return
 
         # Process requests from queue
@@ -153,7 +158,7 @@ class ModelWorker:
 
                 try:
                     # Process the request
-                    result = self.process_image_with_model(ocr_request.image, ocr_request.prompt)
+                    result = loop.run_until_complete(self.process_image_with_model(ocr_request.image, ocr_request.prompt))
 
                     # Store raw result - let main.py decide whether to clean it
                     self.result_dict[ocr_request.request_id] = {
@@ -178,6 +183,7 @@ class ModelWorker:
                 continue
 
         # Worker thread shutting down
+        loop.close()
 
 
 class OCRProcessor:

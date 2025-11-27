@@ -142,16 +142,8 @@ async def ocr_image(request: ImageRequest):
 
     Temporary files are stored with timestamp format: /tmp/ocr_YYYYMMDDHHMMSS_req-xxxxxxxxxxxx/
     """
-    # Create a mock request object with default level
-    class MockRequest:
-        def __init__(self):
-            self.level = "clean"  # Default level
-            self.prompt = request.prompt
-
-    mock_request = MockRequest()
-
     try:
-        print(f"[OCR Main] Received OCR request with level: {mock_request.level}")
+        print(f"[OCR Main] Received OCR request with level: {request.level}")
 
         # Decode base64 image
         print("[OCR Main] Decoding base64 image")
@@ -163,7 +155,7 @@ async def ocr_image(request: ImageRequest):
         print(f"[OCR Main] Using prompt length: {len(prompt) if prompt else 0}")
 
         # Process OCR request
-        result = await process_ocr_request(image_data, img, prompt, mock_request)
+        result = await process_ocr_request(image_data, img, prompt, request)
 
         if "error" in result:
             print(f"[OCR Main] OCR processing failed: {result['error']}")
