@@ -159,7 +159,7 @@ curl -X POST "http://localhost:8000/v1/chat/completions" \\
 
 @app.post("/v1/chat/completions", response_model=ChatCompletionResponse)
 async def create_chat_completion(request: ChatCompletionRequest):
-    """OpenAI compatible chat completion endpoint - equivalent to /v1/ocr with image_clean level"""
+    """OpenAI compatible chat completion endpoint - wrapper for /v1/ocr with image_clean level"""
     print("[OCR Main] Received OpenAI compatible chat completion request")
 
     # Extract image from messages (assuming it's in the first user message)
@@ -188,85 +188,28 @@ async def create_chat_completion(request: ChatCompletionRequest):
     prompt = text_prompt if text_prompt is not None else DEFAULT_OCR_PROMPT
     print(f"[OCR Main] Using prompt length: {len(prompt) if prompt else 0}")
 
+    # Create a mock OCRImageRequest with image_clean level
+    class MockOCRRequest:
+        def __init__(self):
+            self.level = "image_clean"
+            self.prompt = prompt
+
+    mock_request = MockOCRRequest()
+
+    # Call the common OCR processing function with image_clean level
     try:
         # Load image
         print("[OCR Main] Loading image from base64 data")
         image = load_image_from_base64(image_data)
 
-        # Create request - equivalent to /v1/ocr with image_clean level
-        request_id = f"req-{uuid.uuid4().hex[:12]}"
-        ocr_request = OCRRequest(request_id, image, prompt)
-        print(f"[OCR Main] Created OCR request with ID: {request_id}")
+        # Use the common OCR processing function
+        result = await process_ocr_request(image_data, image, prompt, mock_request)
 
-        # Add request to queue
-        print("[OCR Main] Submitting request to processor queue")
-        processor.submit_request(ocr_request)
-
-        # Wait for result
-        print("[OCR Main] Waiting for OCR result")
-        result = await processor.wait_for_result(request_id)
-
-        if result["status"] == "error":
+        if "error" in result:
             print(f"[OCR Main] OCR processing failed: {result['error']}")
             raise HTTPException(status_code=500, detail=f"Error processing image: {result['error']}")
 
-        # Store raw result
-        raw_result = result["result"]
-        print(f"[OCR Main] OCR processing completed, result length: {len(raw_result)}")
-
-        # Initialize variables early
-        processed_result = ''
-        vl_analyzed_result = ''
-        final_result = ''
-        request_output_path = None
-        response_data = {}  # Initialize response_data early
-        timestamp = None
-
-        # Process with image_clean level (equivalent to /v1/ocr with image_clean level)
-        # Create a temporary directory for this request with timestamp
-        timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
-        request_output_path = f"/tmp/ocr_{timestamp}_{request_id}"
-
-        # Ensure directory exists
-        os.makedirs(request_output_path, exist_ok=True)
-        os.makedirs(f"{request_output_path}/images", exist_ok=True)
-
-        # Save original result for processing
-        with open(f"{request_output_path}/result_ori.mmd", "w", encoding="utf-8") as f:
-            f.write(raw_result)
-
-        # Step 1: 图像提取 (Image extraction)
-        print(f"[OCR Main] Extracting images for request {request_id}")
-        img = Image.open(BytesIO(base64.b64decode(image_data))).convert('RGB')
-        extracted_images = extract_images_from_markdown(raw_result, img, request_output_path, request_id)
-        print(f"[OCR Main] Extracted {len(extracted_images)} images for request {request_id}")
-
-        # Save extracted images result
-        with open(f"{request_output_path}/result_extracted.mmd", "w", encoding="utf-8") as f:
-            f.write(raw_result)
-
-        # Step 2: 边界框分析 (Bounding box analysis)
-        # Only do this if needed for drawing boxes or analyzing images
-        print(f"[OCR Main] Performing bounding box analysis for request {request_id}")
-        processed_result = process_bounding_boxes(
-            None, img, raw_result, request_output_path, request_id
-        )
-        print(f"[OCR Main] Bounding box analysis completed for request {request_id}")
-
-        # Save processed result
-        with open(f"{request_output_path}/result_boxing.mmd", "w", encoding="utf-8") as f:
-            f.write(processed_result)
-
-        # Step 3: VL分析（仅用于image_clean模式）
-        print(f"[OCR Main] Starting VL analysis for request {request_id}")
-        vl_analyzed_result = await analyze_extracted_images(processed_result, f"{timestamp}_{request_id}")
-        print(f"[OCR Main] VL analysis completed for request {request_id}")
-        # Use VL analyzed result as the final result
-        final_result = vl_analyzed_result
-
-        # Save VL analyzed result
-        with open(f"{request_output_path}/result_vl.mmd", "w", encoding="utf-8") as f:
-            f.write(vl_analyzed_result)
+        final_result = result["result"]
 
         # Create response
         choice = ChatCompletionResponseChoice(
@@ -294,28 +237,9 @@ class OCRImageRequest(BaseModel):
     prompt: Optional[str] = None
     level: Optional[str] = "clean"  # Result level: "raw", "clean", or "image_clean"
 
-@app.post("/v1/ocr")
-async def ocr_image(request: OCRImageRequest):
-    """
-    Unified OCR endpoint that accepts base64 encoded image in JSON format.
-    All features can be enabled through request parameters:
-    - Basic OCR: Always enabled
-    - Result level: level="raw", "clean" (default), or "image_clean"
-
-    Temporary files are stored with timestamp format: /tmp/ocr_YYYYMMDDHHMMSS_req-xxxxxxxxxxxx/
-    """
+async def process_ocr_request(image_data, img, prompt, request):
+    """Common OCR processing function for both endpoints"""
     try:
-        print(f"[OCR Main] Received OCR request with level: {request.level}")
-
-        # Decode base64 image
-        print("[OCR Main] Decoding base64 image")
-        image_data = base64.b64decode(request.image)
-        img = Image.open(io.BytesIO(image_data)).convert('RGB')
-
-        # Use provided prompt or default from config
-        prompt = request.prompt if request.prompt is not None else DEFAULT_OCR_PROMPT
-        print(f"[OCR Main] Using prompt length: {len(prompt) if prompt else 0}")
-
         # Create request
         request_id = f"req-{uuid.uuid4().hex[:12]}"
         ocr_request = OCRRequest(request_id, img, prompt)
@@ -331,7 +255,7 @@ async def ocr_image(request: OCRImageRequest):
 
         if result["status"] == "error":
             print(f"[OCR Main] OCR processing failed: {result['error']}")
-            raise HTTPException(status_code=500, detail=f"Error processing image: {result['error']}")
+            return {"error": result['error']}
 
         # Store raw result
         raw_result = result["result"]
@@ -344,9 +268,6 @@ async def ocr_image(request: OCRImageRequest):
         request_output_path = None
         response_data = {}  # Initialize response_data early
         timestamp = None
-
-        # Save original result for processing (only for image_clean mode)
-        # Note: We moved this inside the image_clean branch to avoid the variable scope issue
 
         # If any enhanced features are requested, process them in the correct order:
         # 1. OCR解析 (already done)
@@ -399,12 +320,46 @@ async def ocr_image(request: OCRImageRequest):
             # No matching level, just return raw result
             final_result = raw_result
 
-        response_data = {
+        return {
             "result": final_result,
             "request_id": request_id
         }
-        print(f"[OCR Main] Returning response with result length: {len(final_result)}")
-        return JSONResponse(content=response_data)
+    except Exception as e:
+        print(f"[OCR Main] Exception in OCR processing: {str(e)}")
+        return {"error": str(e)}
+
+
+@app.post("/v1/ocr")
+async def ocr_image(request: OCRImageRequest):
+    """
+    Unified OCR endpoint that accepts base64 encoded image in JSON format.
+    All features can be enabled through request parameters:
+    - Basic OCR: Always enabled
+    - Result level: level="raw", "clean" (default), or "image_clean"
+
+    Temporary files are stored with timestamp format: /tmp/ocr_YYYYMMDDHHMMSS_req-xxxxxxxxxxxx/
+    """
+    try:
+        print(f"[OCR Main] Received OCR request with level: {request.level}")
+
+        # Decode base64 image
+        print("[OCR Main] Decoding base64 image")
+        image_data = request.image
+        img = load_image_from_base64(image_data)
+
+        # Use provided prompt or default from config
+        prompt = request.prompt if request.prompt is not None else DEFAULT_OCR_PROMPT
+        print(f"[OCR Main] Using prompt length: {len(prompt) if prompt else 0}")
+
+        # Process OCR request
+        result = await process_ocr_request(image_data, img, prompt, request)
+
+        if "error" in result:
+            print(f"[OCR Main] OCR processing failed: {result['error']}")
+            raise HTTPException(status_code=500, detail=f"Error processing image: {result['error']}")
+
+        print(f"[OCR Main] Returning response with result length: {len(result['result'])}")
+        return JSONResponse(content=result)
     except Exception as e:
         print(f"[OCR Main] Exception in OCR processing: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error processing image: {str(e)}")
