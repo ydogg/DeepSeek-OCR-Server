@@ -30,7 +30,7 @@ from server.schemas.models import (
 )
 from server.core.processor import OCRProcessor, load_image_from_base64
 from server.core.utils import clean_ref_tags, re_match
-from server.config import ADDRESS, PORT, VL_MODEL_BASE_URL, VL_MODEL_API_KEY, VL_MODEL_NAME, VL_MODEL_ANALYSIS_PROMPT, DEFAULT_OCR_PROMPT
+from server.config import ADDRESS, PORT, VL_MODEL_BASE_URL, VL_MODEL_API_KEY, VL_MODEL_NAME, VL_MODEL_ANALYSIS_PROMPT, VL_MODEL_MERMAID_PROMPT, DEFAULT_OCR_PROMPT
 
 # Add parent directory to path to import modules
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -327,7 +327,7 @@ async def ocr_image(request: OCRImageRequest):
             print(f"[OCR Main] Bounding box analysis completed for request {request_id}")
 
             # Save processed result
-            with open(f"{request_output_path}/result.mmd", "w", encoding="utf-8") as f:
+            with open(f"{request_output_path}/result_boxing.mmd", "w", encoding="utf-8") as f:
                 f.write(processed_result)
 
             # Step 3: VL分析（仅用于image_clean模式）
@@ -562,8 +562,19 @@ async def analyze_extracted_images(ocr_result: str, request_id_with_timestamp: s
                     analysis_result = await call_vl_model(image_base64)
 
                     if analysis_result and analysis_result != "Image analysis failed":
-                        # Replace the image reference with the analysis result, adding descriptive text
-                        replacement_text = f"\n[Image Analysis Result: The original image at this location contained the following content]\n{analysis_result}\n"
+                        # Apply mermaid transformation to the analysis result
+                        print(f"[VL Analysis] Applying mermaid transformation to analysis result")
+                        mermaid_result = await call_vl_model_mermaid(analysis_result)
+
+                        # Check if mermaid transformation was successful and contains mermaid content
+                        if mermaid_result and mermaid_result != "Mermaid transformation failed":
+                            # Replace the image reference with the analysis result, adding descriptive text
+                            # If mermaid transformation was successful, use the mermaid result
+                            replacement_text = f"\n[Image Analysis Result: The original image at this location contained the following content]\n{mermaid_result}\n"
+                        else:
+                            # If mermaid transformation failed, use the original analysis result
+                            replacement_text = f"\n[Image Analysis Result: The original image at this location contained the following content]\n{analysis_result}\n"
+
                         processed_result = processed_result.replace(a_match_image, replacement_text)
                         print(f"[VL Analysis] Image {idx+1} reference replaced with analysis result")
                     else:
@@ -578,6 +589,62 @@ async def analyze_extracted_images(ocr_result: str, request_id_with_timestamp: s
 
     print(f"[VL Analysis] Completed analysis, final result length: {len(processed_result)} characters")
     return processed_result
+
+async def call_vl_model_mermaid(text_content: str):
+    """
+    Call the VL model API to transform text to mermaid format using OpenAI client
+    """
+    try:
+        print(f"[VL Mermaid] Starting VL model call for mermaid transformation")
+
+        # Import OpenAI client
+        from openai import AsyncOpenAI
+
+        # Initialize OpenAI client
+        client = AsyncOpenAI(
+            base_url=VL_MODEL_BASE_URL,
+            api_key=VL_MODEL_API_KEY or "sk-test"  # Use test key if none provided
+        )
+
+        # Prepare the request
+        messages = [
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": f"{VL_MODEL_MERMAID_PROMPT}\n\n{text_content}"
+                    }
+                ]
+            }
+        ]
+
+        print(f"[VL Mermaid] Request messages prepared")
+        print(f"[VL Mermaid] Model: {VL_MODEL_NAME}")
+
+        # Make the API call using OpenAI client
+        print(f"[VL Mermaid] Making API call to {VL_MODEL_BASE_URL}")
+        response = await client.chat.completions.create(
+            model=VL_MODEL_NAME,
+            messages=messages,
+            max_tokens=2000
+        )
+
+        print(f"[VL Mermaid] API call completed successfully")
+
+        # Process the response
+        if response and response.choices:
+            mermaid_text = response.choices[0].message.content
+            print(f"[VL Mermaid] Mermaid text length: {len(mermaid_text) if mermaid_text else 0}")
+            return mermaid_text
+        else:
+            print(f"[VL Mermaid] No response or choices in response")
+            return "Mermaid transformation failed"
+
+    except Exception as e:
+        print(f"[VL Mermaid] Exception in call_vl_model_mermaid: {str(e)}")
+        return "Mermaid transformation failed"
+
 
 async def call_vl_model(image_base64: str):
     """

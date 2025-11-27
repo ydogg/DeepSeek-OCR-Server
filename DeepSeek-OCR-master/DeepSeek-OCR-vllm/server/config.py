@@ -21,6 +21,9 @@ If it's a table, extract and present the data in a structured format.
 If it's a diagram or flowchart, explain the process or relationships shown.
 If it's a photograph, describe the content and context."""  # Prompt for VL model analysis
 
+# VL model configuration for mermaid transformation
+VL_MODEL_MERMAID_PROMPT = "Convert text that can be transformed into mermaid format to mermaid format, keep other content unchanged."
+
 # Default OCR prompt
 DEFAULT_OCR_PROMPT = "<image>\n<|grounding|>Convert the document to markdown."
 
