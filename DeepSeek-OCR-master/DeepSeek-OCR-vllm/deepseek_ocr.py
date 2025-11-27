@@ -42,7 +42,7 @@ from deepencoder.clip_sdpa import build_clip_l
 from deepencoder.build_linear import MlpProjector
 from addict import Dict
 # import time
-from config import IMAGE_SIZE, BASE_SIZE, CROP_MODE, PRINT_NUM_VIS_TOKENS, PROMPT
+from config import IMAGE_SIZE, BASE_SIZE, CROP_MODE, PRINT_NUM_VIS_TOKENS, OCR_PROMPT
 # The image token id may be various
 _IMAGE_TOKEN = "<image>"
 
@@ -132,7 +132,7 @@ class DeepseekOCRDummyInputsBuilder(
 
         max_image_size = self.info.get_image_size_with_most_features()
 
-        if '<image>' in PROMPT:
+        if '<image>' in OCR_PROMPT:
             return {
                 "image":
                 DeepseekOCRProcessor().tokenize_with_images(images = self._get_dummy_images(width=max_image_size.width,

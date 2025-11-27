@@ -24,7 +24,7 @@ from vllm.engine.async_llm_engine import AsyncEngineDeadError
 
 from process.ngram_norepeat import NoRepeatNGramLogitsProcessor
 from process.image_process import DeepseekOCRProcessor
-from config import MODEL_PATH, PROMPT, CROP_MODE, MAX_CONCURRENCY
+from config import OCR_MODEL_PATH, OCR_PROMPT, CROP_MODE, MAX_CONCURRENCY
 from server.config import MAX_WORKER_THREADS
 from server.schemas.models import OCRRequest
 from server.core.utils import clean_ref_tags
@@ -40,10 +40,10 @@ class ModelWorker:
 
     def initialize_model(self):
         """Initialize a single model instance with error handling"""
-        print(f"Initializing model with path: {MODEL_PATH}")
+        print(f"Initializing model with path: {OCR_MODEL_PATH}")
 
         engine_args = EngineArgs(
-            model=MODEL_PATH,
+            model=OCR_MODEL_PATH,
             hf_overrides={"architectures": ["DeepseekOCRForCausalLM"]},
             block_size=256,
             max_model_len=4096,
@@ -90,7 +90,7 @@ class ModelWorker:
 
         # Use default prompt if not provided
         if prompt is None:
-            prompt = PROMPT
+            prompt = OCR_PROMPT
 
         # Process image
         if '<image>' in prompt:

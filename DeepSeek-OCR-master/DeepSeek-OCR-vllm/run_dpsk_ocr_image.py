@@ -19,7 +19,7 @@ import numpy as np
 from tqdm import tqdm
 from process.ngram_norepeat import NoRepeatNGramLogitsProcessor
 from process.image_process import DeepseekOCRProcessor
-from config import MODEL_PATH, INPUT_PATH, OUTPUT_PATH, PROMPT, CROP_MODE
+from config import OCR_MODEL_PATH, INPUT_PATH, OUTPUT_PATH, OCR_PROMPT, CROP_MODE
 
 
 
@@ -209,13 +209,13 @@ if __name__ == "__main__":
     image = load_image(INPUT_PATH).convert('RGB')
 
     
-    if '<image>' in PROMPT:
+    if '<image>' in OCR_PROMPT:
 
         image_features = DeepseekOCRProcessor().tokenize_with_images(images = [image], bos=True, eos=True, cropping=CROP_MODE)
     else:
         image_features = ''
 
-    prompt = PROMPT
+    prompt = OCR_PROMPT
 
     result_out = asyncio.run(stream_generate(image_features, prompt))
 

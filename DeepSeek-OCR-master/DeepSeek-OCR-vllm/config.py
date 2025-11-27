@@ -35,7 +35,7 @@ If it's a photograph, describe the content and context."""  # Prompt for VL mode
 DEFAULT_OCR_PROMPT = "<image>\nFree OCR."
 
 #MODEL_PATH = 'deepseek-ai/DeepSeek-OCR' # change to your model path
-MODEL_PATH = '/home/ai/.cache/modelscope/hub/models/deepseek-ai/DeepSeek-OCR' # change to your model path
+OCR_MODEL_PATH = '/home/ai/.cache/modelscope/hub/models/deepseek-ai/DeepSeek-OCR' # change to your model path
 
 # TODO: change INPUT_PATH
 # .pdf: run_dpsk_ocr_pdf.py;
@@ -46,8 +46,8 @@ MODEL_PATH = '/home/ai/.cache/modelscope/hub/models/deepseek-ai/DeepSeek-OCR' # 
 INPUT_PATH = '/home/ai/deepseek-ocr/pdf-input/'
 OUTPUT_PATH = '/home/ai/deepseek-ocr/pdf-output/'
 
-PROMPT = '<image>\n<|grounding|>Convert the document to markdown.'
-# PROMPT = '<image>\nFree OCR.'
+OCR_PROMPT = '<image>\n<|grounding|>Convert the document to markdown.'
+# OCR_PROMPT = '<image>\nFree OCR.'
 # TODO commonly used prompts
 # document: <image>\n<|grounding|>Convert the document to markdown.
 # other image: <image>\n<|grounding|>OCR this image.
@@ -61,4 +61,4 @@ PROMPT = '<image>\n<|grounding|>Convert the document to markdown.'
 
 from transformers import AutoTokenizer
 
-TOKENIZER = AutoTokenizer.from_pretrained(MODEL_PATH, trust_remote_code=True)
+TOKENIZER = AutoTokenizer.from_pretrained(OCR_MODEL_PATH, trust_remote_code=True)

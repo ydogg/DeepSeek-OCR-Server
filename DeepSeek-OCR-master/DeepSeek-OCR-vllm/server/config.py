@@ -12,7 +12,7 @@ MAX_WORKER_THREADS = 1
 STREAMING_MODE = False
 
 # VL model configuration for image analysis
-VL_MODEL_BASE_URL = "http://172.28.71.194:8000"  # Default to local server
+VL_MODEL_BASE_URL = "http://172.28.71.194:8000/v1"  # Default to local server
 VL_MODEL_API_KEY = "test"  # API key for the VL model if needed
 VL_MODEL_NAME = "gpt-5-chat"  # Model name for the VL model
 VL_MODEL_ANALYSIS_PROMPT = """Analyze this image and provide a detailed description.
@@ -21,8 +21,11 @@ If it's a table, extract and present the data in a structured format.
 If it's a diagram or flowchart, explain the process or relationships shown.
 If it's a photograph, describe the content and context."""  # Prompt for VL model analysis
 
-# VL model configuration for mermaid transformation
-VL_MODEL_MERMAID_PROMPT = "Convert text that can be transformed into mermaid format to mermaid format, keep other content unchanged."
+# LLM model configuration for output enhancement
+ENHANCEMENT_LLM_BASE_URL = "http://llm.necsoft.jn.com.cn:8000/v1"
+ENHANCEMENT_LLM_MODEL_NAME = "qwen3-coder"
+ENHANCEMENT_LLM_API_KEY = "test"
+VL_MODEL_ENHANCEMENT_PROMPT = "如果文字内容描述了流程图等UML风格的内容，将这些文字转为mermaid格式，其他无关文字直接保留即可。"
 
 # Default OCR prompt
 DEFAULT_OCR_PROMPT = "<image>\n<|grounding|>Convert the document to markdown."
@@ -42,11 +45,11 @@ NUM_WORKERS = 64 # image pre-process (resize/padding) workers
 PRINT_NUM_VIS_TOKENS = False
 SKIP_REPEAT = True
 
-MODEL_PATH = '/home/ai/.cache/modelscope/hub/models/deepseek-ai/DeepSeek-OCR'  # change to your model path
+OCR_MODEL_PATH = '/home/ai/.cache/modelscope/hub/models/deepseek-ai/DeepSeek-OCR'  # change to your model path
 
-PROMPT = '<image>\n<|grounding|>Convert the document to markdown.'
-#PROMPT = '<image>\nFree OCR.'
+OCR_PROMPT = '<image>\n<|grounding|>Convert the document to markdown.'
+#OCR_PROMPT = '<image>\nFree OCR.'
 
 # Tokenizer
 from transformers import AutoTokenizer
-TOKENIZER = AutoTokenizer.from_pretrained(MODEL_PATH, trust_remote_code=True)
+TOKENIZER = AutoTokenizer.from_pretrained(OCR_MODEL_PATH, trust_remote_code=True)
