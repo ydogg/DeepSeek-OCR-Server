@@ -14,22 +14,36 @@ CROP_MODE = True
 MIN_CROPS= 2
 MAX_CROPS= 6 # max:9; If your GPU memory is small, it is recommended to set it to 6.
 MAX_CONCURRENCY = 100 # If you have limited GPU memory, lower the concurrency count.
-NUM_WORKERS = 64 # image pre-process (resize/padding) workers 
+NUM_WORKERS = 64 # image pre-process (resize/padding) workers
 PRINT_NUM_VIS_TOKENS = False
 SKIP_REPEAT = True
 # Whether to clean ref and det tags from the output
 CLEAN_REF_TAGS = False  # Set to True to remove ref and det tags from the output
 
+# VL model configuration for image analysis
+VL_MODEL_BASE_URL = "http://localhost:8000"  # Default to local server
+VL_MODEL_API_KEY = ""  # API key for the VL model if needed
+VL_MODEL_NAME = "deepseek-ocr"  # Model name for the VL model
+ENABLE_VL_IMAGE_ANALYSIS = False  # Whether to enable VL model analysis for extracted images
+VL_MODEL_ANALYSIS_PROMPT = """Analyze this image and provide a detailed description.
+If it's a chart or graph, describe the data, trends, and key insights.
+If it's a table, extract and present the data in a structured format.
+If it's a diagram or flowchart, explain the process or relationships shown.
+If it's a photograph, describe the content and context."""  # Prompt for VL model analysis
+
+# Default OCR prompt
+DEFAULT_OCR_PROMPT = "<image>\nFree OCR."
+
 #MODEL_PATH = 'deepseek-ai/DeepSeek-OCR' # change to your model path
 MODEL_PATH = '/home/ai/.cache/modelscope/hub/models/deepseek-ai/DeepSeek-OCR' # change to your model path
 
 # TODO: change INPUT_PATH
-# .pdf: run_dpsk_ocr_pdf.py; 
-# .jpg, .png, .jpeg: run_dpsk_ocr_image.py; 
+# .pdf: run_dpsk_ocr_pdf.py;
+# .jpg, .png, .jpeg: run_dpsk_ocr_image.py;
 # Omnidocbench images path: run_dpsk_ocr_eval_batch.py
 
-#INPUT_PATH = '/home/ai/deepseek-ocr/images/pic0682.jpg' 
-INPUT_PATH = '/home/ai/deepseek-ocr/pdf-input/' 
+#INPUT_PATH = '/home/ai/deepseek-ocr/images/pic0682.jpg'
+INPUT_PATH = '/home/ai/deepseek-ocr/pdf-input/'
 OUTPUT_PATH = '/home/ai/deepseek-ocr/pdf-output/'
 
 PROMPT = '<image>\n<|grounding|>Convert the document to markdown.'
