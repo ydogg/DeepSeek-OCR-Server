@@ -6,33 +6,50 @@ import base64
 import datetime
 import io
 import os
+import sys
 import uuid
 from typing import Dict, Any
+
+# Add parent directory to path to import modules
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+project_root = os.path.dirname(parent_dir)
+sys.path.extend([parent_dir, project_root])
 
 from PIL import Image
 from fastapi import HTTPException
 from io import BytesIO
 
-from server.core.processor import OCRRequest, processor
+from server.core.processor import OCRRequest, load_image_from_base64
 from server.core.utils import clean_ref_tags, process_bounding_boxes, analyze_extracted_images, extract_images_from_markdown
 from server.config import DEFAULT_OCR_PROMPT
-from server.core.processor import load_image_from_base64
+
+
+# Import the global processor instance from main module
+# We need to import it locally to avoid circular imports
+def get_processor():
+    """Get the global processor instance"""
+    import server.main
+    return server.main.processor
 
 
 async def process_ocr_request(image_data: str, img: Image.Image, prompt: str, request) -> Dict[str, Any]:
     """
     Common OCR processing function for both endpoints
-    
+
     Args:
         image_data: Base64 encoded image data
         img: PIL Image object
         prompt: OCR prompt
         request: Request object with level attribute
-    
+
     Returns:
         Dict containing result and request_id or error
     """
     try:
+        # Get the global processor instance
+        processor = get_processor()
+
         # Create request
         request_id = f"req-{uuid.uuid4().hex[:12]}"
         ocr_request = OCRRequest(request_id, img, prompt)
