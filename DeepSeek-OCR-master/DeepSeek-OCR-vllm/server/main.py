@@ -1,21 +1,12 @@
-import asyncio
-import io
 import os
 import sys
 import time
 import uuid
 import re
-import base64
-import datetime
-import requests
 from contextlib import asynccontextmanager
-from typing import List
-from PIL import Image, ImageDraw, ImageFont
-import numpy as np
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form
-from fastapi.responses import JSONResponse, FileResponse
-from pydantic import BaseModel
-from typing import Optional
+
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import JSONResponse
 
 from deepseek_ocr import DeepseekOCRForCausalLM
 from vllm.model_executor.models.registry import ModelRegistry
@@ -25,13 +16,10 @@ from server.schemas.models import (
     ChatCompletionRequest,
     ChatCompletionResponseChoice,
     ChatCompletionResponse,
-    OCRRequest,
-    ContentText,
     OCRImageRequest
 )
 from server.core.processor import OCRProcessor, load_image_from_base64
-from server.core.utils import clean_ref_tags, re_match
-from server.config import ADDRESS, PORT, VL_MODEL_BASE_URL, VL_MODEL_API_KEY, VL_MODEL_NAME, VL_MODEL_ANALYSIS_PROMPT, ENHANCEMENT_LLM_BASE_URL, ENHANCEMENT_LLM_MODEL_NAME, ENHANCEMENT_LLM_API_KEY, VL_MODEL_ENHANCEMENT_PROMPT, DEFAULT_OCR_PROMPT
+from server.config import DEFAULT_OCR_PROMPT
 
 # Import services
 from server.services.ocr_service import process_ocr_request, extract_image_from_openai_request, create_mock_ocr_request
