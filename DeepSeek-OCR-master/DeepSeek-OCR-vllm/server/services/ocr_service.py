@@ -21,7 +21,8 @@ from fastapi import HTTPException
 from io import BytesIO
 
 from server.core.processor import OCRRequest, load_image_from_base64
-from server.core.utils import clean_ref_tags, process_bounding_boxes, analyze_extracted_images, extract_images_from_markdown
+from server.core.utils import clean_ref_tags
+from server.core.ocr_utils import process_bounding_boxes, analyze_extracted_images
 from server.config import DEFAULT_OCR_PROMPT
 
 
