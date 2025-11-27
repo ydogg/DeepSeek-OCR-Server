@@ -39,22 +39,14 @@ ModelRegistry.register_model("DeepseekOCRForCausalLM", DeepseekOCRForCausalLM)
 # Global processor
 processor = OCRProcessor()
 
-print("Initializing processor...")
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan event handler for startup and shutdown events"""
-    print("Starting up...")
     # Startup event
     processor.start_workers()
-    print("Workers started")
     yield
     # Shutdown event
-    print("Shutting down...")
     processor.stop_workers()
-    print("Workers stopped")
-
-print("Creating FastAPI app...")
 
 app = FastAPI(
     title="DeepSeek OCR API",
