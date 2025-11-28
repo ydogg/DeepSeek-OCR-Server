@@ -49,7 +49,6 @@ class ChatCompletionResponse(BaseModel):
 class ImageRequest(BaseModel):
     image: str  # base64 encoded image
     prompt: Optional[str] = None
-    level: str = "clean"  # Processing level: raw, clean, image_clean
 
 
 class OCRRequest:

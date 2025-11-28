@@ -12,7 +12,7 @@ def test_multilevel_ocr(image_path):
         image_data = base64.b64encode(image_file.read()).decode('utf-8')
 
     # Test all three levels
-    url = "http://localhost:8000/v1/ocr"
+    url = "http://localhost:8001/v1/ocr"
 
     # Test 1: Raw level
     print("=== Testing RAW Level ===")

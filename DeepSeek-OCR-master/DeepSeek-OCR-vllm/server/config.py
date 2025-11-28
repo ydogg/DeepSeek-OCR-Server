@@ -3,13 +3,22 @@
 
 # Server address and port
 ADDRESS = "0.0.0.0"
-PORT = 8000
+PORT = 8001
 
 # Maximum number of worker threads (default: 1, max: 2)
 MAX_WORKER_THREADS = 1
 
 # Whether to enable streaming mode for responses
 STREAMING_MODE = False
+
+# OCR mode configuration
+# ONLINE_OCR_MODE: True for online API mode, False for offline local mode
+ONLINE_OCR_MODE = True
+
+# Online OCR API configuration
+ONLINE_OCR_BASE_URL = "http://localhost:8000/v1"  # Base URL for the online OCR API
+ONLINE_OCR_MODEL_NAME = "deepseek-ai/DeepSeek-OCR"  # Model name for the online OCR API
+ONLINE_OCR_API_KEY = "test"  # API key for the online OCR API if needed
 
 # VL model configuration for image analysis
 VL_MODEL_BASE_URL = "http://172.28.71.194:8000/v1"  # Default to local server

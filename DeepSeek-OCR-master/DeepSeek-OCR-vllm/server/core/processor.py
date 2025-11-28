@@ -6,7 +6,7 @@ import sys
 import threading
 import time
 import uuid
-from typing import Dict, Any
+from typing import Dict
 from queue import Queue, Empty
 from threading import Thread, Event
 from PIL import Image
@@ -217,8 +217,26 @@ class OCRProcessor:
         raise Exception("Request timeout")
 
     def submit_request(self, ocr_request: OCRRequest):
-        """Submit a request to the queue"""
-        self.request_queue.put(ocr_request)
+        """Submit a request and process it directly"""
+        # Process the request directly instead of using queue
+        try:
+            # Use default prompt from config if none provided
+            from server.config import OCR_PROMPT
+            prompt = ocr_request.prompt if ocr_request.prompt is not None else OCR_PROMPT
+            print(f"[Offline OCR] Using prompt: {repr(prompt)}")
+
+            result = self.process_image_with_model(ocr_request.image, prompt)
+            # Store result for compatibility with existing code
+            self.result_dict[ocr_request.request_id] = {
+                "status": "completed",
+                "result": result
+            }
+        except Exception as e:
+            # Store error for this request
+            self.result_dict[ocr_request.request_id] = {
+                "status": "error",
+                "error": str(e)
+            }
 
     def health_check(self):
         """Check if the processor is healthy"""
