@@ -3,35 +3,18 @@
 API处理模块，包含OCR核心处理、图像处理和VL分析功能
 """
 
-import asyncio
-import io
 import os
-import sys
-import time
-import uuid
 import re
+import uuid
 import base64
 import datetime
-from contextlib import asynccontextmanager
-from typing import List, Optional
+from typing import Optional
 from PIL import Image, ImageDraw, ImageFont
 import numpy as np
 
-# Add parent directory to path to import modules
-current_dir = os.path.dirname(os.path.abspath(__file__))
-parent_dir = os.path.dirname(current_dir)
-sys.path.extend([parent_dir, current_dir])
-
-from server.schemas.models import OCRRequest, OCRImageRequest
-from server.core.processor import OCRProcessor, load_image_from_base64
-from server.core.online_processor import OnlineOCRProcessor
+from server.schemas.models import OCRRequest
 from server.core.utils import clean_ref_tags, re_match
 from server.config import VL_MODEL_BASE_URL, VL_MODEL_API_KEY, VL_MODEL_NAME, VL_MODEL_ANALYSIS_PROMPT, ENHANCEMENT_LLM_BASE_URL, ENHANCEMENT_LLM_MODEL_NAME, ENHANCEMENT_LLM_API_KEY, VL_MODEL_ENHANCEMENT_PROMPT, DEFAULT_OCR_PROMPT
-
-# Import required modules from the main project
-from process.ngram_norepeat import NoRepeatNGramLogitsProcessor
-from process.image_process import DeepseekOCRProcessor
-from config import OCR_MODEL_PATH, INPUT_PATH, OUTPUT_PATH, OCR_PROMPT, CROP_MODE
 
 # Import processor from instances module to use the same instance
 from server.core.instances import processor

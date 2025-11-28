@@ -1,16 +1,11 @@
-import asyncio
-import io
 import os
 import sys
-import time
 import uuid
-import re
 import base64
 import datetime
 from contextlib import asynccontextmanager
 from typing import List
-from PIL import Image, ImageDraw, ImageFont
-import numpy as np
+from PIL import Image
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.responses import JSONResponse, FileResponse
 from pydantic import BaseModel
@@ -28,18 +23,10 @@ from server.schemas.models import (
     OCRImageRequest,
     ContentText
 )
-from server.core.processor import OCRProcessor, load_image_from_base64
-from server.core.online_processor import OnlineOCRProcessor
-from server.core.utils import clean_ref_tags, re_match
-from server.config import ADDRESS, PORT, VL_MODEL_BASE_URL, VL_MODEL_API_KEY, VL_MODEL_NAME, VL_MODEL_ANALYSIS_PROMPT, ENHANCEMENT_LLM_BASE_URL, ENHANCEMENT_LLM_MODEL_NAME, ENHANCEMENT_LLM_API_KEY, VL_MODEL_ENHANCEMENT_PROMPT, DEFAULT_OCR_PROMPT
+from server.config import ADDRESS, PORT, DEFAULT_OCR_PROMPT
 
 # Add parent directory to path to import modules
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-# Import required modules from the main project
-from process.ngram_norepeat import NoRepeatNGramLogitsProcessor
-from process.image_process import DeepseekOCRProcessor
-from config import OCR_MODEL_PATH, INPUT_PATH, OUTPUT_PATH, OCR_PROMPT, CROP_MODE
 
 # Import functions from api module
 from server.api import (
