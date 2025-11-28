@@ -52,6 +52,126 @@ online_processor = OnlineOCRProcessor()
 from server.config import ONLINE_OCR_MODE
 processor = online_processor if ONLINE_OCR_MODE else offline_processor
 
+async def dowith_ocr_request(image: Image.Image, prompt: str = None, request_id: str = None, level: str = "clean") -> dict:
+    """
+    Common OCR processing method that works with both online and offline processors.
+    Handles all three levels of processing: raw, clean, and image_clean.
+
+    Args:
+        image: PIL Image to process
+        prompt: OCR prompt to use (defaults to DEFAULT_OCR_PROMPT if None)
+        request_id: Request ID (generates new one if None)
+        level: Processing level - "raw", "clean", or "image_clean"
+
+    Returns:
+        dict: OCR result with status and result/error
+    """
+    # Use provided prompt or default from config
+    if prompt is None:
+        prompt = DEFAULT_OCR_PROMPT
+
+    # Generate request ID if not provided
+    if request_id is None:
+        request_id = f"req-{uuid.uuid4().hex[:12]}"
+
+    print(f"[OCR Common] Processing OCR request with ID: {request_id}, level: {level}")
+    print(f"[OCR Common] Using prompt length: {len(prompt) if prompt else 0}")
+
+    try:
+        # Step 1: Basic OCR processing
+        # Create request
+        ocr_request = OCRRequest(request_id, image, prompt)
+        print(f"[OCR Common] Created OCR request with ID: {request_id}")
+
+        # Submit request to processor (works for both online and offline)
+        print("[OCR Common] Submitting request to processor")
+        processor.submit_request(ocr_request)
+
+        # Wait for result (works for both online and offline)
+        print("[OCR Common] Waiting for OCR result")
+        result = await processor.wait_for_result(request_id)
+
+        if result["status"] == "error":
+            print(f"[OCR Common] OCR processing failed: {result['error']}")
+            return result
+
+        # Store raw result
+        raw_result = result["result"]
+        print(f"[OCR Common] OCR processing completed, result length: {len(raw_result)}")
+
+        # Initialize variables
+        processed_result = ''
+        vl_analyzed_result = ''
+        final_result = ''
+        request_output_path = None
+        timestamp = None
+
+        # Step 2: Process based on level
+        if level == "raw":
+            final_result = raw_result
+
+        elif level == "clean":
+            final_result = clean_ref_tags(raw_result)  # Clean from raw result
+
+        elif level == "image_clean":
+            # Create a temporary directory for this request with timestamp
+            timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+            request_output_path = f"/tmp/ocr_{timestamp}_{request_id}"
+
+            # Ensure directory exists
+            os.makedirs(request_output_path, exist_ok=True)
+            os.makedirs(f"{request_output_path}/images", exist_ok=True)
+
+            # Save original result for processing
+            with open(f"{request_output_path}/result_ori.mmd", "w", encoding="utf-8") as f:
+                f.write(raw_result)
+
+            # Step 3: Bounding box analysis
+            # Only do this if needed for drawing boxes or analyzing images
+            print(f"[OCR Common] Performing bounding box analysis for request {request_id}")
+            # Create a mock request object for process_bounding_boxes
+            class MockRequest:
+                def __init__(self):
+                    pass
+            mock_request = MockRequest()
+            processed_result = process_bounding_boxes(
+                mock_request, image, raw_result, request_output_path, request_id
+            )
+            print(f"[OCR Common] Bounding box analysis completed for request {request_id}")
+
+            # Save processed result
+            with open(f"{request_output_path}/result_boxing.mmd", "w", encoding="utf-8") as f:
+                f.write(processed_result)
+
+            # Step 4: VL analysis (only for image_clean mode)
+            print(f"[OCR Common] Starting VL analysis for request {request_id}")
+            vl_analyzed_result = await analyze_extracted_images(processed_result, f"{timestamp}_{request_id}")
+            print(f"[OCR Common] VL analysis completed for request {request_id}")
+            # Use VL analyzed result as the final result
+            final_result = vl_analyzed_result
+
+            # Save VL analyzed result
+            with open(f"{request_output_path}/result_vl.mmd", "w", encoding="utf-8") as f:
+                f.write(vl_analyzed_result)
+        else:
+            # No matching level, just return raw result
+            final_result = raw_result
+
+        print(f"[OCR Common] Returning result with length: {len(final_result)}")
+        return {
+            "status": "success",
+            "result": final_result,
+            "request_id": request_id
+        }
+
+    except Exception as e:
+        print(f"[OCR Common] Exception in OCR processing: {str(e)}")
+        return {
+            "status": "error",
+            "error": str(e)
+        }
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan event handler for startup and shutdown events"""
@@ -198,18 +318,9 @@ async def create_chat_completion(request: ChatCompletionRequest):
         print("[OCR Main] Loading image from base64 data")
         image = load_image_from_base64(image_data)
 
-        # Create request
+        # Process OCR using common method with raw level (no additional processing)
         request_id = f"req-{uuid.uuid4().hex[:12]}"
-        ocr_request = OCRRequest(request_id, image, prompt)
-        print(f"[OCR Main] Created OCR request with ID: {request_id}")
-
-        # Submit request to processor (works for both online and offline)
-        print("[OCR Main] Submitting request to processor")
-        processor.submit_request(ocr_request)
-
-        # Wait for result (works for both online and offline)
-        print("[OCR Main] Waiting for OCR result")
-        result = await processor.wait_for_result(request_id)
+        result = await dowith_ocr_request(image, prompt, request_id, "raw")
 
         if result["status"] == "error":
             print(f"[OCR Main] OCR processing failed: {result['error']}")
@@ -266,94 +377,19 @@ async def ocr_image(request: OCRImageRequest):
         prompt = request.prompt if request.prompt is not None else DEFAULT_OCR_PROMPT
         print(f"[OCR Main] Using prompt length: {len(prompt) if prompt else 0}")
 
-        # Create request
+        # Process OCR using common method with specified level
         request_id = f"req-{uuid.uuid4().hex[:12]}"
-        ocr_request = OCRRequest(request_id, img, prompt)
-        print(f"[OCR Main] Created OCR request with ID: {request_id}")
-
-        # Submit request to processor (works for both online and offline)
-        print("[OCR Main] Submitting request to processor")
-        processor.submit_request(ocr_request)
-
-        # Wait for result (works for both online and offline)
-        print("[OCR Main] Waiting for OCR result")
-        result = await processor.wait_for_result(request_id)
+        result = await dowith_ocr_request(img, prompt, request_id, request.level)
 
         if result["status"] == "error":
             print(f"[OCR Main] OCR processing failed: {result['error']}")
             raise HTTPException(status_code=500, detail=f"Error processing image: {result['error']}")
 
-        # Store raw result
-        raw_result = result["result"]
-        print(f"[OCR Main] OCR processing completed, result length: {len(raw_result)}")
-
-        # Initialize variables early
-        processed_result = ''
-        vl_analyzed_result = ''
-        final_result = ''
-        request_output_path = None
-        response_data = {}  # Initialize response_data early
-        timestamp = None
-
-        # Save original result for processing (only for image_clean mode)
-        # Note: We moved this inside the image_clean branch to avoid the variable scope issue
-
-        # If any enhanced features are requested, process them in the correct order:
-        # 1. OCR解析 (already done)
-        # 2. 图像提取（用于image_clean模式）
-        # 3. VL分析（仅用于image_clean模式）
-        # 4. 根据level确定返回结果
-        # Note: We always create temporary files for processing
-        if request.level == "raw":
-            final_result = raw_result
-
-        elif request.level == "clean":
-            final_result = clean_ref_tags(raw_result)  # Clean from raw result
-
-        elif request.level == "image_clean":
-            # Create a temporary directory for this request with timestamp
-            timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
-            request_output_path = f"/tmp/ocr_{timestamp}_{request_id}"
-
-            # Ensure directory exists
-            os.makedirs(request_output_path, exist_ok=True)
-            os.makedirs(f"{request_output_path}/images", exist_ok=True)
-
-            # Save original result for processing
-            with open(f"{request_output_path}/result_ori.mmd", "w", encoding="utf-8") as f:
-                f.write(raw_result)
-
-            # Step 2: 边界框分析 (Bounding box analysis)
-            # Only do this if needed for drawing boxes or analyzing images
-            print(f"[OCR Main] Performing bounding box analysis for request {request_id}")
-            processed_result = process_bounding_boxes(
-                request, img, raw_result, request_output_path, request_id
-            )
-            print(f"[OCR Main] Bounding box analysis completed for request {request_id}")
-
-            # Save processed result
-            with open(f"{request_output_path}/result_boxing.mmd", "w", encoding="utf-8") as f:
-                f.write(processed_result)
-
-            # Step 3: VL分析（仅用于image_clean模式）
-            print(f"[OCR Main] Starting VL analysis for request {request_id}")
-            vl_analyzed_result = await analyze_extracted_images(processed_result, f"{timestamp}_{request_id}")
-            print(f"[OCR Main] VL analysis completed for request {request_id}")
-            # Use VL analyzed result as the final result
-            final_result = vl_analyzed_result
-
-            # Save VL analyzed result
-            with open(f"{request_output_path}/result_vl.mmd", "w", encoding="utf-8") as f:
-                f.write(vl_analyzed_result)
-        else:
-            # No matching level, just return raw result
-            final_result = raw_result
-
         response_data = {
-            "result": final_result,
+            "result": result["result"],
             "request_id": request_id
         }
-        print(f"[OCR Main] Returning response with result length: {len(final_result)}")
+        print(f"[OCR Main] Returning response with result length: {len(result['result'])}")
         return JSONResponse(content=response_data)
     except Exception as e:
         print(f"[OCR Main] Exception in OCR processing: {str(e)}")
