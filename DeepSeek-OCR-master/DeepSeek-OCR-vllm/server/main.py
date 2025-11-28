@@ -3,6 +3,7 @@ import sys
 import uuid
 import base64
 import datetime
+import io
 from contextlib import asynccontextmanager
 from typing import List
 from PIL import Image
