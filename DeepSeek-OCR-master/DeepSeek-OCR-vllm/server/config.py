@@ -13,7 +13,7 @@ STREAMING_MODE = False
 
 # OCR mode configuration
 # ONLINE_OCR_MODE: True for online API mode, False for offline local mode
-ONLINE_OCR_MODE = True
+ONLINE_OCR_MODE = False
 
 # Online OCR API configuration
 ONLINE_OCR_BASE_URL = "http://localhost:8000/v1"  # Base URL for the online OCR API
