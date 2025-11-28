@@ -25,6 +25,7 @@ from server.schemas.models import (
     ChatCompletionResponseChoice,
     ChatCompletionResponse,
     OCRRequest,
+    OCRImageRequest,
     ContentText
 )
 from server.core.processor import OCRProcessor, load_image_from_base64
@@ -40,136 +41,22 @@ from process.ngram_norepeat import NoRepeatNGramLogitsProcessor
 from process.image_process import DeepseekOCRProcessor
 from config import OCR_MODEL_PATH, INPUT_PATH, OUTPUT_PATH, OCR_PROMPT, CROP_MODE
 
+# Import functions from api module
+from server.api import (
+    dowith_ocr_request,
+    rematch_image,
+    extract_coordinates_and_label,
+    draw_bounding_boxes,
+    analyze_extracted_images,
+    enhance_vl_output,
+    call_vl_model
+)
 
 # Register the model
 ModelRegistry.register_model("DeepseekOCRForCausalLM", DeepseekOCRForCausalLM)
 
-# Global processors
-offline_processor = OCRProcessor()
-online_processor = OnlineOCRProcessor()
-
-# Select processor based on configuration
-from server.config import ONLINE_OCR_MODE
-processor = online_processor if ONLINE_OCR_MODE else offline_processor
-
-async def dowith_ocr_request(image: Image.Image, prompt: str = None, request_id: str = None, level: str = "clean") -> dict:
-    """
-    Common OCR processing method that works with both online and offline processors.
-    Handles all three levels of processing: raw, clean, and image_clean.
-
-    Args:
-        image: PIL Image to process
-        prompt: OCR prompt to use (defaults to DEFAULT_OCR_PROMPT if None)
-        request_id: Request ID (generates new one if None)
-        level: Processing level - "raw", "clean", or "image_clean"
-
-    Returns:
-        dict: OCR result with status and result/error
-    """
-    # Use provided prompt or default from config
-    if prompt is None:
-        prompt = DEFAULT_OCR_PROMPT
-
-    # Generate request ID if not provided
-    if request_id is None:
-        request_id = f"req-{uuid.uuid4().hex[:12]}"
-
-    print(f"[OCR Common] Processing OCR request with ID: {request_id}, level: {level}")
-    print(f"[OCR Common] Using prompt length: {len(prompt) if prompt else 0}")
-
-    try:
-        # Step 1: Basic OCR processing
-        # Create request
-        ocr_request = OCRRequest(request_id, image, prompt)
-        print(f"[OCR Common] Created OCR request with ID: {request_id}")
-
-        # Submit request to processor (works for both online and offline)
-        print("[OCR Common] Submitting request to processor")
-        processor.submit_request(ocr_request)
-
-        # Wait for result (works for both online and offline)
-        print("[OCR Common] Waiting for OCR result")
-        result = await processor.wait_for_result(request_id)
-
-        if result["status"] == "error":
-            print(f"[OCR Common] OCR processing failed: {result['error']}")
-            return result
-
-        # Store raw result
-        raw_result = result["result"]
-        print(f"[OCR Common] OCR processing completed, result length: {len(raw_result)}")
-
-        # Initialize variables
-        processed_result = ''
-        vl_analyzed_result = ''
-        final_result = ''
-        request_output_path = None
-        timestamp = None
-
-        # Step 2: Process based on level
-        if level == "raw":
-            final_result = raw_result
-
-        elif level == "clean":
-            final_result = clean_ref_tags(raw_result)  # Clean from raw result
-
-        elif level == "image_clean":
-            # Create a temporary directory for this request with timestamp
-            timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
-            request_output_path = f"/tmp/ocr_{timestamp}_{request_id}"
-
-            # Ensure directory exists
-            os.makedirs(request_output_path, exist_ok=True)
-            os.makedirs(f"{request_output_path}/images", exist_ok=True)
-
-            # Save original result for processing
-            with open(f"{request_output_path}/result_ori.mmd", "w", encoding="utf-8") as f:
-                f.write(raw_result)
-
-            # Step 3: Bounding box analysis
-            # Only do this if needed for drawing boxes or analyzing images
-            print(f"[OCR Common] Performing bounding box analysis for request {request_id}")
-            # Create a mock request object for process_bounding_boxes
-            class MockRequest:
-                def __init__(self):
-                    pass
-            mock_request = MockRequest()
-            processed_result = process_bounding_boxes(
-                mock_request, image, raw_result, request_output_path, request_id
-            )
-            print(f"[OCR Common] Bounding box analysis completed for request {request_id}")
-
-            # Save processed result
-            with open(f"{request_output_path}/result_boxing.mmd", "w", encoding="utf-8") as f:
-                f.write(processed_result)
-
-            # Step 4: VL analysis (only for image_clean mode)
-            print(f"[OCR Common] Starting VL analysis for request {request_id}")
-            vl_analyzed_result = await analyze_extracted_images(processed_result, f"{timestamp}_{request_id}")
-            print(f"[OCR Common] VL analysis completed for request {request_id}")
-            # Use VL analyzed result as the final result
-            final_result = vl_analyzed_result
-
-            # Save VL analyzed result
-            with open(f"{request_output_path}/result_vl.mmd", "w", encoding="utf-8") as f:
-                f.write(vl_analyzed_result)
-        else:
-            # No matching level, just return raw result
-            final_result = raw_result
-
-        print(f"[OCR Common] Returning result with length: {len(final_result)}")
-        return {
-            "status": "success",
-            "result": final_result,
-            "request_id": request_id
-        }
-
-    except Exception as e:
-        print(f"[OCR Common] Exception in OCR processing: {str(e)}")
-        return {
-            "status": "error",
-            "error": str(e)
-        }
+# Import processor from instances module
+from server.core.instances import processor
 
 
 @asynccontextmanager
@@ -350,10 +237,6 @@ async def create_chat_completion(request: ChatCompletionRequest):
         print(f"[OCR Main] Exception in OpenAI compatible endpoint: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error processing image: {str(e)}")
 
-class OCRImageRequest(BaseModel):
-    image: str  # base64 encoded image
-    prompt: Optional[str] = None
-    level: Optional[str] = "clean"  # Result level: "raw", "clean", or "image_clean"
 
 @app.post("/v1/ocr")
 async def ocr_image(request: OCRImageRequest):
@@ -522,38 +405,6 @@ def draw_bounding_boxes(image, refs, output_path):
     return img_draw
 
 
-def process_bounding_boxes(request: 'OCRImageRequest', img: Image.Image, raw_result: str,
-                           request_output_path: str, request_id: str) -> str:
-    """
-    Process bounding boxes drawing and related features
-
-    Args:
-        request: OCR request with parameters
-        img: Input image
-        raw_result: Raw OCR result
-        request_output_path: Path to save processed files
-        request_id: Request ID
-
-    Returns:
-        str: Processed result with image references replaced
-    """
-    # Extract matches
-    matches_ref, matches_images, matches_other = re_match(raw_result)
-
-    # Draw bounding boxes
-    result_image = draw_bounding_boxes(img.copy(), matches_ref, request_output_path)
-    result_image.save(f"{request_output_path}/result_with_boxes.jpg")
-
-    # Process image matches with special prefix for OCR detected images
-    processed_result = raw_result
-    for idx, a_match_image in enumerate(matches_images):
-        processed_result = processed_result.replace(a_match_image, f'![](images/ocr_detected_{idx}.jpg)\n')
-
-    # Process other matches
-    for idx, a_match_other in enumerate(matches_other):
-        processed_result = processed_result.replace(a_match_other, '').replace('\\coloneqq', ':=').replace('\\eqqcolon', '=:')
-
-    return processed_result
 
 
 async def analyze_extracted_images(ocr_result: str, request_id_with_timestamp: str):
@@ -631,121 +482,6 @@ async def analyze_extracted_images(ocr_result: str, request_id_with_timestamp: s
 
     print(f"[VL Analysis] Completed analysis, final result length: {len(processed_result)} characters")
     return processed_result
-
-async def enhance_vl_output(text_content: str):
-    """
-    Call the LLM API to enhance the output quality using OpenAI client
-    """
-    try:
-        print(f"[VL Enhancement] Starting LLM call for output enhancement")
-
-        # Import OpenAI client
-        from openai import AsyncOpenAI
-
-        # Initialize OpenAI client with separate LLM configuration
-        client = AsyncOpenAI(
-            base_url=ENHANCEMENT_LLM_BASE_URL,
-            api_key=ENHANCEMENT_LLM_API_KEY or "sk-test"  # Use test key if none provided
-        )
-
-        # Prepare the request with code block formatting for better handling
-        messages = [
-            {
-                "role": "user",
-                "content": f"{VL_MODEL_ENHANCEMENT_PROMPT}\n\n```\n{text_content}\n```"
-            }
-        ]
-
-        print(f"[VL Enhancement] Request messages prepared")
-        print(f"[VL Enhancement] Model: {ENHANCEMENT_LLM_MODEL_NAME}")
-
-        # Make the API call using OpenAI client
-        print(f"[VL Enhancement] Making API call to {ENHANCEMENT_LLM_BASE_URL}")
-        response = await client.chat.completions.create(
-            model=ENHANCEMENT_LLM_MODEL_NAME,
-            messages=messages,
-            max_tokens=4096  # Reduce max_tokens to a more reasonable value
-        )
-
-        print(f"[VL Enhancement] API call completed successfully")
-
-        # Process the response
-        if response and response.choices:
-            enhanced_text = response.choices[0].message.content
-            print(f"[VL Enhancement] Enhanced text length: {len(enhanced_text) if enhanced_text else 0}")
-            return enhanced_text
-        else:
-            print(f"[VL Enhancement] No response or choices in response")
-            return "Output enhancement failed"
-
-    except Exception as e:
-        print(f"[VL Enhancement] Exception in enhance_vl_output: {str(e)}")
-        # Add more detailed error information
-        import traceback
-        print(f"[VL Enhancement] Full traceback: {traceback.format_exc()}")
-        return "Output enhancement failed"
-
-
-async def call_vl_model(image_base64: str):
-    """
-    Call the VL model API to analyze an image using OpenAI client
-    """
-    try:
-        print(f"[VL Analysis] Starting VL model call with OpenAI client")
-
-        # Import OpenAI client
-        from openai import AsyncOpenAI
-
-        # Initialize OpenAI client
-        client = AsyncOpenAI(
-            base_url=VL_MODEL_BASE_URL,
-            api_key=VL_MODEL_API_KEY or "sk-test"  # Use test key if none provided
-        )
-
-        # Prepare the request
-        messages = [
-            {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "text",
-                        "text": VL_MODEL_ANALYSIS_PROMPT
-                    },
-                    {
-                        "type": "image_url",
-                        "image_url": {
-                            "url": f"data:image/jpeg;base64,{image_base64}"
-                        }
-                    }
-                ]
-            }
-        ]
-
-        print(f"[VL Analysis] Request messages prepared")
-        print(f"[VL Analysis] Model: {VL_MODEL_NAME}")
-
-        # Make the API call using OpenAI client
-        print(f"[VL Analysis] Making API call to {VL_MODEL_BASE_URL}")
-        response = await client.chat.completions.create(
-            model=VL_MODEL_NAME,
-            messages=messages,
-            max_tokens=16384
-        )
-
-        print(f"[VL Analysis] API call completed successfully")
-
-        # Process the response
-        if response and response.choices:
-            analysis_text = response.choices[0].message.content
-            print(f"[VL Analysis] Analysis text length: {len(analysis_text) if analysis_text else 0}")
-            return analysis_text
-        else:
-            print(f"[VL Analysis] No response or choices in response")
-            return "Image analysis failed"
-
-    except Exception as e:
-        print(f"[VL Analysis] Exception in call_vl_model: {str(e)}")
-        return "Image analysis failed"
 
 
 if __name__ == "__main__":

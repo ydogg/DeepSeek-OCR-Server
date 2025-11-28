@@ -51,6 +51,12 @@ class ImageRequest(BaseModel):
     prompt: Optional[str] = None
 
 
+class OCRImageRequest(BaseModel):
+    image: str  # base64 encoded image
+    prompt: Optional[str] = None
+    level: Optional[str] = "clean"  # Result level: "raw", "clean", or "image_clean"
+
+
 class OCRRequest:
     def __init__(self, request_id: str, image, prompt: str = None):
         from config import OCR_PROMPT
