@@ -13,11 +13,18 @@ from PIL import Image, ImageDraw, ImageFont
 import numpy as np
 
 from server.schemas.models import OCRRequest
-from server.core.utils import clean_ref_tags, re_match
+from server.core.utils import clean_ref_tags
 from server.config import VL_MODEL_BASE_URL, VL_MODEL_API_KEY, VL_MODEL_NAME, VL_MODEL_ANALYSIS_PROMPT, ENHANCEMENT_LLM_BASE_URL, ENHANCEMENT_LLM_MODEL_NAME, ENHANCEMENT_LLM_API_KEY, VL_MODEL_ENHANCEMENT_PROMPT, DEFAULT_OCR_PROMPT
 
 # Import processor from instances module to use the same instance
 from server.core.instances import processor
+
+# Import shared functions from common module
+from common.image_processing import (
+    rematch_image, extract_coordinates_and_label,
+    draw_bounding_boxes, process_bounding_boxes
+)
+from common.text_processing import re_match
 
 
 async def dowith_ocr_request(image: Image.Image, prompt: str = None, request_id: str = None, level: str = "clean") -> dict:
