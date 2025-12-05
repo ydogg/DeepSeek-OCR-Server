@@ -38,7 +38,7 @@ from common.config_utils import get_ocr_config, get_processing_config
 
 # Import batch-specific configuration
 from batch.config import (
-    get_batch_config, STAGE_OCR, STAGE_CLEAN, STAGE_IMAGE_CLEAN, STAGE_ALL,
+    get_batch_config, STAGE_OCR, STAGE_MD_TEXT, STAGE_MD_MERGED, STAGE_ALL,
     VL_MODEL_BASE_URL, VL_MODEL_API_KEY, VL_MODEL_NAME, VL_MODEL_ANALYSIS_PROMPT,
     ENHANCEMENT_LLM_BASE_URL, ENHANCEMENT_LLM_MODEL_NAME, ENHANCEMENT_LLM_API_KEY,
     VL_MODEL_ENHANCEMENT_PROMPT, DEFAULT_OCR_PROMPT
@@ -244,24 +244,24 @@ class BatchProcessor:
             self.save_results(raw_results, image_paths, STAGE_OCR)
 
         # Stage 2: md_text processing
-        if STAGE_CLEAN in stages or STAGE_ALL in stages:
+        if STAGE_MD_TEXT in stages or STAGE_ALL in stages:
             if raw_results is None:
                 # Load existing raw results if OCR stage wasn't run
                 raw_results = self.load_existing_results(image_paths, STAGE_OCR)
 
             if raw_results:
                 clean_results = self.process_clean_batch(raw_results)
-                self.save_results(clean_results, image_paths, STAGE_CLEAN)
+                self.save_results(clean_results, image_paths, STAGE_MD_TEXT)
 
         # Stage 3: md_merged processing
-        if STAGE_IMAGE_CLEAN in stages or STAGE_ALL in stages:
+        if STAGE_MD_MERGED in stages or STAGE_ALL in stages:
             if raw_results is None:
                 # Load existing raw results if OCR stage wasn't run
                 raw_results = self.load_existing_results(image_paths, STAGE_OCR)
 
             if raw_results:
                 image_clean_results = self.process_md_merged_batch(raw_results, image_paths)
-                self.save_results(image_clean_results, image_paths, STAGE_IMAGE_CLEAN)
+                self.save_results(image_clean_results, image_paths, STAGE_MD_MERGED)
 
         print("Batch processing completed!")
 
