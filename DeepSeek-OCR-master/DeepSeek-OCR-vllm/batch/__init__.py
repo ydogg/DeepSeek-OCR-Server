@@ -1,1 +1,0 @@
-# Batch processing module for DeepSeek OCR
