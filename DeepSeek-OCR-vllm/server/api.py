@@ -27,16 +27,16 @@ from common.image_processing import (
 from common.text_processing import re_match
 
 
-async def dowith_ocr_request(image: Image.Image, prompt: str = None, request_id: str = None, level: str = "clean") -> dict:
+async def dowith_ocr_request(image: Image.Image, prompt: str = None, request_id: str = None, level: str = "md_text") -> dict:
     """
     Common OCR processing method that works with both online and offline processors.
-    Handles all three levels of processing: raw, clean, and image_clean.
+    Handles all three levels of processing: raw, md_text, and md_merged.
 
     Args:
         image: PIL Image to process
         prompt: OCR prompt to use (defaults to DEFAULT_OCR_PROMPT if None)
         request_id: Request ID (generates new one if None)
-        level: Processing level - "raw", "clean", or "image_clean"
+        level: Processing level - "raw", "md_text", or "md_merged"
 
     Returns:
         dict: OCR result with status and result/error
@@ -96,13 +96,13 @@ async def dowith_ocr_request(image: Image.Image, prompt: str = None, request_id:
             print(f"[OCR Common] Returning raw result, length: {len(raw_result)}")
             final_result = raw_result
 
-        elif level == "clean":
+        elif level == "md_text":
             print(f"[OCR Common] Cleaning result, raw length: {len(raw_result)}")
             final_result = clean_ref_tags(raw_result)  # Clean from raw result
             print(f"[OCR Common] Cleaned result, length: {len(final_result)}")
 
-        elif level == "image_clean":
-            print(f"[OCR Common] Processing image_clean level, raw result length: {len(raw_result)}")
+        elif level == "md_merged":
+            print(f"[OCR Common] Processing md_merged level, raw result length: {len(raw_result)}")
             # Create a temporary directory for this request with timestamp
             timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
             request_output_path = f"/tmp/ocr_{timestamp}_{request_id}"
@@ -132,7 +132,7 @@ async def dowith_ocr_request(image: Image.Image, prompt: str = None, request_id:
             with open(f"{request_output_path}/result_boxing.mmd", "w", encoding="utf-8") as f:
                 f.write(processed_result)
 
-            # Step 4: VL analysis (only for image_clean mode)
+            # Step 4: VL analysis (only for md_merged mode)
             print(f"[OCR Common] Starting VL analysis for request {request_id}")
             vl_analyzed_result = await analyze_extracted_images(processed_result, f"{timestamp}_{request_id}")
             print(f"[OCR Common] VL analysis completed for request {request_id}")

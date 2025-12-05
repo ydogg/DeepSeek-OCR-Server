@@ -2,8 +2,8 @@
 Batch processor for DeepSeek OCR
 Implements three-stage batch processing:
 1. OCR processing using vLLM batch capabilities
-2. Clean processing using shared text processing functions
-3. Image_clean processing using shared image processing functions
+2. md_text processing using shared text processing functions
+3. md_merged processing using shared image processing functions
 """
 
 import os
@@ -136,8 +136,8 @@ class BatchProcessor:
         return raw_results
 
     def process_clean_batch(self, raw_results):
-        """Second stage: Clean batch processing"""
-        print(f"Processing clean for {len(raw_results)} results...")
+        """Second stage: md_text batch processing"""
+        print(f"Processing md_text for {len(raw_results)} results...")
 
         clean_results = []
         for result in tqdm(raw_results, desc="Cleaning results"):
@@ -146,9 +146,9 @@ class BatchProcessor:
 
         return clean_results
 
-    def process_image_clean_batch(self, raw_results, image_paths):
-        """Third stage: Image_clean batch processing"""
-        print(f"Processing image_clean for {len(raw_results)} results...")
+    def process_md_merged_batch(self, raw_results, image_paths):
+        """Third stage: md_merged batch processing"""
+        print(f"Processing md_merged for {len(raw_results)} results...")
 
         image_clean_results = []
 
@@ -158,7 +158,7 @@ class BatchProcessor:
 
         for idx, (raw_result, image_path) in enumerate(tqdm(zip(raw_results, image_paths),
                                                            total=len(raw_results),
-                                                           desc="Processing image_clean")):
+                                                           desc="Processing md_merged")):
             # Create request-specific output directory
             filename = os.path.basename(image_path)
             name, _ = os.path.splitext(filename)
@@ -243,7 +243,7 @@ class BatchProcessor:
             raw_results = self.process_ocr_batch(image_paths)
             self.save_results(raw_results, image_paths, STAGE_OCR)
 
-        # Stage 2: Clean processing
+        # Stage 2: md_text processing
         if STAGE_CLEAN in stages or STAGE_ALL in stages:
             if raw_results is None:
                 # Load existing raw results if OCR stage wasn't run
@@ -253,14 +253,14 @@ class BatchProcessor:
                 clean_results = self.process_clean_batch(raw_results)
                 self.save_results(clean_results, image_paths, STAGE_CLEAN)
 
-        # Stage 3: Image_clean processing
+        # Stage 3: md_merged processing
         if STAGE_IMAGE_CLEAN in stages or STAGE_ALL in stages:
             if raw_results is None:
                 # Load existing raw results if OCR stage wasn't run
                 raw_results = self.load_existing_results(image_paths, STAGE_OCR)
 
             if raw_results:
-                image_clean_results = self.process_image_clean_batch(raw_results, image_paths)
+                image_clean_results = self.process_md_merged_batch(raw_results, image_paths)
                 self.save_results(image_clean_results, image_paths, STAGE_IMAGE_CLEAN)
 
         print("Batch processing completed!")

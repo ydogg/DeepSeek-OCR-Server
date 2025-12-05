@@ -20,8 +20,8 @@ def test_ocr_level(image_path, level):
         "level": level
     }
 
-    # Add save_results for image_clean level
-    if level == "image_clean":
+    # Add save_results for md_merged level
+    if level == "md_merged":
         payload["save_results"] = True
 
     try:
@@ -81,11 +81,11 @@ def test_multilevel_ocr(image_path):
     except Exception as e:
         print(f"Request failed: {e}")
 
-    # Test 2: Clean level
-    print("=== Testing CLEAN Level ===")
-    payload_clean = {
+    # Test 2: md_text level
+    print("=== Testing MD_TEXT Level ===")
+    payload_md_text = {
         "image": image_data,
-        "level": "clean",
+        "level": "md_text",
         "save_results": True
     }
 
@@ -93,13 +93,13 @@ def test_multilevel_ocr(image_path):
         response = requests.post(
             url,
             headers={"Content-Type": "application/json"},
-            json=payload_clean,
+            json=payload_md_text,
             timeout=120
         )
         print(f"Status code: {response.status_code}")
         if response.status_code == 200:
             result = response.json()
-            print("2. CLEANED RESULT:")
+            print("2. MARKDOWN TEXT RESULT:")
             print("=" * 50)
             print(result["result"])
             print()
@@ -108,24 +108,24 @@ def test_multilevel_ocr(image_path):
     except Exception as e:
         print(f"Request failed: {e}")
 
-    # Test 3: Image clean level
-    print("=== Testing IMAGE_CLEAN Level ===")
-    payload_image_clean = {
+    # Test 3: md_merged level
+    print("=== Testing MD_MERGED Level ===")
+    payload_md_merged = {
         "image": image_data,
-        "level": "image_clean"
+        "level": "md_merged"
     }
 
     try:
         response = requests.post(
             url,
             headers={"Content-Type": "application/json"},
-            json=payload_image_clean,
+            json=payload_md_merged,
             timeout=120
         )
         print(f"Status code: {response.status_code}")
         if response.status_code == 200:
             result = response.json()
-            print("3. VL ANALYZED RESULT:")
+            print("3. MARKDOWN MERGED RESULT:")
             print("=" * 50)
             print(result["result"])
             print()
@@ -137,7 +137,7 @@ def test_multilevel_ocr(image_path):
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("Usage: python test_multilevel_ocr.py <image_path> [level]")
-        print("  level: 'raw', 'clean', 'image_clean', or 'all' (default)")
+        print("  level: 'raw', 'md_text', 'md_merged', or 'all' (default)")
         sys.exit(1)
 
     image_path = sys.argv[1]
@@ -145,8 +145,8 @@ if __name__ == "__main__":
 
     if level == "all":
         test_multilevel_ocr(image_path)
-    elif level in ["raw", "clean", "image_clean"]:
+    elif level in ["raw", "md_text", "md_merged"]:
         test_ocr_level(image_path, level)
     else:
-        print("Invalid level. Use 'raw', 'clean', 'image_clean', or 'all'")
+        print("Invalid level. Use 'raw', 'md_text', 'md_merged', or 'all'")
         sys.exit(1)

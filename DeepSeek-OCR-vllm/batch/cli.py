@@ -28,8 +28,8 @@ def main():
     )
     parser.add_argument(
         "--stages", 
-        default="ocr,clean",
-        help=f"Processing stages to run (comma-separated): {STAGE_OCR}, {STAGE_CLEAN}, {STAGE_IMAGE_CLEAN}, or {STAGE_ALL} (default: ocr,clean)"
+        default="raw,md_text",
+        help=f"Processing stages to run (comma-separated): {STAGE_OCR}, {STAGE_CLEAN}, {STAGE_IMAGE_CLEAN}, or {STAGE_ALL} (default: raw,md_text)"
     )
     
     args = parser.parse_args()

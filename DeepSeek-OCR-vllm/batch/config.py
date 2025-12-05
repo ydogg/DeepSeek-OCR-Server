@@ -12,9 +12,9 @@ DEFAULT_INPUT_DIR = "/home/ai/deepseek-ocr/images"
 DEFAULT_OUTPUT_DIR = "/home/ai/deepseek-ocr/output"
 
 # Batch processing stages
-STAGE_OCR = "ocr"
-STAGE_CLEAN = "clean"
-STAGE_IMAGE_CLEAN = "image_clean"
+STAGE_OCR = "raw"
+STAGE_CLEAN = "md_text"
+STAGE_IMAGE_CLEAN = "md_merged"
 STAGE_ALL = "all"
 
 # Default stages to process
@@ -23,7 +23,7 @@ DEFAULT_STAGES = [STAGE_OCR, STAGE_CLEAN]
 # Batch size for processing
 DEFAULT_BATCH_SIZE = 10
 
-# Whether to enable image analysis in image_clean stage
+# Whether to enable image analysis in md_merged stage
 ENABLE_IMAGE_ANALYSIS = True
 
 # VL model configuration for image analysis (copied from server/config.py)
