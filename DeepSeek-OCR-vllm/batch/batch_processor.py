@@ -31,14 +31,14 @@ from process.ngram_norepeat import NoRepeatNGramLogitsProcessor
 from process.image_process import DeepseekOCRProcessor
 
 # Import shared functions
-from common.text_processing import clean_ref_tags
+from common.text_processing import clean_ref_tags, convert_image_tags_to_md
 from common.image_processing import rematch_image, draw_bounding_boxes, process_bounding_boxes
 from common.image_analysis import analyze_extracted_images_sync
 from common.config_utils import get_ocr_config, get_processing_config
 
 # Import batch-specific configuration
 from batch.config import (
-    get_batch_config, STAGE_OCR, STAGE_MD_TEXT, STAGE_MD_MERGED, STAGE_ALL,
+    get_batch_config, STAGE_OCR, STAGE_MD_IMAGE, STAGE_MD_TEXT, STAGE_MD_MERGED, STAGE_ALL,
     VL_MODEL_BASE_URL, VL_MODEL_API_KEY, VL_MODEL_NAME, VL_MODEL_ANALYSIS_PROMPT,
     ENHANCEMENT_LLM_BASE_URL, ENHANCEMENT_LLM_MODEL_NAME, ENHANCEMENT_LLM_API_KEY,
     VL_MODEL_ENHANCEMENT_PROMPT, DEFAULT_OCR_PROMPT
@@ -136,7 +136,7 @@ class BatchProcessor:
         return raw_results
 
     def process_clean_batch(self, raw_results):
-        """Second stage: md_text batch processing"""
+        """Second stage: md_text batch processing (remove all tags)"""
         print(f"Processing md_text for {len(raw_results)} results...")
 
         clean_results = []
@@ -145,6 +145,20 @@ class BatchProcessor:
             clean_results.append(clean_result)
 
         return clean_results
+
+    def process_md_image_batch(self, raw_results):
+        """New stage: md_image batch processing (keep image tags)"""
+        print(f"Processing md_image for {len(raw_results)} results...")
+
+        md_image_results = []
+        for result in tqdm(raw_results, desc="Processing md_image results"):
+            # First clean non-image tags
+            md_image_result = clean_ref_tags(result, keep_image_tags=True)
+            # Then convert image tags to Markdown format
+            md_image_result = convert_image_tags_to_md(md_image_result)
+            md_image_results.append(md_image_result)
+
+        return md_image_results
 
     def process_md_merged_batch(self, raw_results, image_paths):
         """Third stage: md_merged batch processing"""
@@ -235,6 +249,7 @@ class BatchProcessor:
 
         # Process in stages
         raw_results = None
+        md_image_results = None
         clean_results = None
         image_clean_results = None
 
@@ -243,7 +258,17 @@ class BatchProcessor:
             raw_results = self.process_ocr_batch(image_paths)
             self.save_results(raw_results, image_paths, STAGE_OCR)
 
-        # Stage 2: md_text processing
+        # Stage 2: md_image processing
+        if STAGE_MD_IMAGE in stages or STAGE_ALL in stages:
+            if raw_results is None:
+                # Load existing raw results if OCR stage wasn't run
+                raw_results = self.load_existing_results(image_paths, STAGE_OCR)
+
+            if raw_results:
+                md_image_results = self.process_md_image_batch(raw_results)
+                self.save_results(md_image_results, image_paths, STAGE_MD_IMAGE)
+
+        # Stage 3: md_text processing
         if STAGE_MD_TEXT in stages or STAGE_ALL in stages:
             if raw_results is None:
                 # Load existing raw results if OCR stage wasn't run
@@ -253,7 +278,7 @@ class BatchProcessor:
                 clean_results = self.process_clean_batch(raw_results)
                 self.save_results(clean_results, image_paths, STAGE_MD_TEXT)
 
-        # Stage 3: md_merged processing
+        # Stage 4: md_merged processing
         if STAGE_MD_MERGED in stages or STAGE_ALL in stages:
             if raw_results is None:
                 # Load existing raw results if OCR stage wasn't run

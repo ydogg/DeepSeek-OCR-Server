@@ -13,12 +13,13 @@ DEFAULT_OUTPUT_DIR = "/home/ai/deepseek-ocr/output"
 
 # Batch processing stages
 STAGE_OCR = "raw"
+STAGE_MD_IMAGE = "md_image"
 STAGE_MD_TEXT = "md_text"
 STAGE_MD_MERGED = "md_merged"
 STAGE_ALL = "all"
 
 # Default stages to process
-DEFAULT_STAGES = [STAGE_OCR, STAGE_MD_TEXT]
+DEFAULT_STAGES = [STAGE_OCR, STAGE_MD_IMAGE, STAGE_MD_TEXT]
 
 # Batch size for processing
 DEFAULT_BATCH_SIZE = 10

@@ -14,6 +14,7 @@ import numpy as np
 
 from server.schemas.models import OCRRequest
 from server.core.utils import clean_ref_tags
+from common.text_processing import convert_image_tags_to_md
 from server.config import VL_MODEL_BASE_URL, VL_MODEL_API_KEY, VL_MODEL_NAME, VL_MODEL_ANALYSIS_PROMPT, ENHANCEMENT_LLM_BASE_URL, ENHANCEMENT_LLM_MODEL_NAME, ENHANCEMENT_LLM_API_KEY, VL_MODEL_ENHANCEMENT_PROMPT, DEFAULT_OCR_PROMPT
 
 # Import processor from instances module to use the same instance
@@ -30,13 +31,13 @@ from common.text_processing import re_match
 async def dowith_ocr_request(image: Image.Image, prompt: str = None, request_id: str = None, level: str = "md_text") -> dict:
     """
     Common OCR processing method that works with both online and offline processors.
-    Handles all three levels of processing: raw, md_text, and md_merged.
+    Handles all levels of processing: raw, md_image, md_text, and md_merged.
 
     Args:
         image: PIL Image to process
         prompt: OCR prompt to use (defaults to DEFAULT_OCR_PROMPT if None)
         request_id: Request ID (generates new one if None)
-        level: Processing level - "raw", "md_text", or "md_merged"
+        level: Processing level - "raw", "md_image", "md_text", or "md_merged"
 
     Returns:
         dict: OCR result with status and result/error
@@ -95,6 +96,12 @@ async def dowith_ocr_request(image: Image.Image, prompt: str = None, request_id:
         if level == "raw":
             print(f"[OCR Common] Returning raw result, length: {len(raw_result)}")
             final_result = raw_result
+
+        elif level == "md_image":
+            print(f"[OCR Common] Cleaning result but keeping image tags, raw length: {len(raw_result)}")
+            final_result = clean_ref_tags(raw_result, keep_image_tags=True)  # Clean from raw result but keep image tags
+            final_result = convert_image_tags_to_md(final_result)  # Convert image tags to Markdown format
+            print(f"[OCR Common] Cleaned result with image tags, length: {len(final_result)}")
 
         elif level == "md_text":
             print(f"[OCR Common] Cleaning result, raw length: {len(raw_result)}")

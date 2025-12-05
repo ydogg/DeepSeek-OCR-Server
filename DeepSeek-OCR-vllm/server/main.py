@@ -68,7 +68,7 @@ app = FastAPI(
 ### Unified OCR
 - `POST /v1/ocr` - Unified OCR endpoint with configurable features:
   - Basic OCR: Always enabled
-  - Result level: `level=raw|md_text|md_merged` (default: md_text)
+  - Result level: `level=raw|md_image|md_text|md_merged` (default: md_text)
 
 ## Features
 
@@ -235,7 +235,7 @@ async def ocr_image(request: OCRImageRequest):
     Unified OCR endpoint that accepts base64 encoded image in JSON format.
     All features can be enabled through request parameters:
     - Basic OCR: Always enabled
-    - Result level: level="raw", "md_text" (default), or "md_merged"
+    - Result level: level="raw", "md_image", "md_text" (default), or "md_merged"
 
     Temporary files are stored with timestamp format: /tmp/ocr_YYYYMMDDHHMMSS_req-xxxxxxxxxxxx/
 """

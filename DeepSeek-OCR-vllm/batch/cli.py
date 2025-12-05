@@ -11,7 +11,7 @@ project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, project_root)
 
 from batch.batch_processor import BatchProcessor
-from batch.config import STAGE_OCR, STAGE_MD_TEXT, STAGE_MD_MERGED, STAGE_ALL
+from batch.config import STAGE_OCR, STAGE_MD_IMAGE, STAGE_MD_TEXT, STAGE_MD_MERGED, STAGE_ALL
 
 
 def main():
@@ -28,8 +28,8 @@ def main():
     )
     parser.add_argument(
         "--stages", 
-        default="raw,md_text",
-        help=f"Processing stages to run (comma-separated): {STAGE_OCR}, {STAGE_MD_TEXT}, {STAGE_MD_MERGED}, or {STAGE_ALL} (default: raw,md_text)"
+        default="raw,md_image,md_text",
+        help=f"Processing stages to run (comma-separated): {STAGE_OCR}, {STAGE_MD_IMAGE}, {STAGE_MD_TEXT}, {STAGE_MD_MERGED}, or {STAGE_ALL} (default: raw,md_image,md_text)"
     )
     
     args = parser.parse_args()
@@ -40,7 +40,7 @@ def main():
     else:
         stages = args.stages.split(',')
         # Validate stages
-        valid_stages = [STAGE_OCR, STAGE_MD_TEXT, STAGE_MD_MERGED, STAGE_ALL]
+        valid_stages = [STAGE_OCR, STAGE_MD_IMAGE, STAGE_MD_TEXT, STAGE_MD_MERGED, STAGE_ALL]
         for stage in stages:
             if stage not in valid_stages:
                 print(f"Error: Invalid stage '{stage}'. Valid stages are: {', '.join(valid_stages)}")

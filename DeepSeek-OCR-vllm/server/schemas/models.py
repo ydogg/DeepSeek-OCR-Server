@@ -54,7 +54,7 @@ class ImageRequest(BaseModel):
 class OCRImageRequest(BaseModel):
     image: str  # base64 encoded image
     prompt: Optional[str] = None
-    level: Optional[str] = "md_text"  # Result level: "raw", "md_text", or "md_merged"
+    level: Optional[str] = "md_text"  # Result level: "raw", "md_image", "md_text", or "md_merged"
 
 
 class OCRRequest:
