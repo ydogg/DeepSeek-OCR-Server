@@ -161,6 +161,7 @@ curl -X POST "http://localhost:8000/v1/chat/completions" \\
 async def create_chat_completion(request: ChatCompletionRequest):
     """OpenAI compatible chat completion endpoint"""
     print("[OCR Main] Received OpenAI compatible chat completion request")
+    print("[OCR Main] Request details - OpenAI compatible endpoint")
 
     # Extract image from messages (assuming it's in the first user message)
     image_data = None
@@ -192,9 +193,11 @@ async def create_chat_completion(request: ChatCompletionRequest):
         # Load image
         print("[OCR Main] Loading image from base64 data")
         image = load_image_from_base64(image_data)
+        print(f"[OCR Main] Image loaded, size: {image.size if image else 'Unknown'}")
 
         # Process OCR using common method with raw level (no additional processing)
         request_id = f"req-{uuid.uuid4().hex[:12]}"
+        print(f"[OCR Main] Processing request ID: {request_id} with level: raw (OpenAI compatible)")
         result = await dowith_ocr_request(image, prompt, request_id, "raw")
 
         if result["status"] == "error":
@@ -238,11 +241,13 @@ async def ocr_image(request: OCRImageRequest):
     """
     try:
         print(f"[OCR Main] Received OCR request with level: {request.level}")
+        print(f"[OCR Main] Request details - Level: {request.level}, Prompt provided: {request.prompt is not None}")
 
         # Decode base64 image
         print("[OCR Main] Decoding base64 image")
         image_data = base64.b64decode(request.image)
         img = Image.open(io.BytesIO(image_data)).convert('RGB')
+        print(f"[OCR Main] Image decoded, size: {img.size if img else 'Unknown'}")
 
         # Use provided prompt or default from config
         prompt = request.prompt if request.prompt is not None else DEFAULT_OCR_PROMPT
@@ -250,6 +255,7 @@ async def ocr_image(request: OCRImageRequest):
 
         # Process OCR using common method with specified level
         request_id = f"req-{uuid.uuid4().hex[:12]}"
+        print(f"[OCR Main] Processing request ID: {request_id} with level: {request.level}")
         result = await dowith_ocr_request(img, prompt, request_id, request.level)
 
         if result["status"] == "error":

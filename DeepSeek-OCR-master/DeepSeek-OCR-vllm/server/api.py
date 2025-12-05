@@ -50,29 +50,38 @@ async def dowith_ocr_request(image: Image.Image, prompt: str = None, request_id:
         request_id = f"req-{uuid.uuid4().hex[:12]}"
 
     print(f"[OCR Common] Processing OCR request with ID: {request_id}, level: {level}")
-    print(f"[OCR Common] Using prompt length: {len(prompt) if prompt else 0}")
+    print(f"[OCR Common] Request details - Image size: {image.size if image else 'Unknown'}, Prompt length: {len(prompt) if prompt else 0}")
+
+    # Import ONLINE_OCR_MODE to determine processing mode
+    from server.config import ONLINE_OCR_MODE
 
     try:
-        # Step 1: Basic OCR processing
-        # Create request
-        ocr_request = OCRRequest(request_id, image, prompt)
-        print(f"[OCR Common] Created OCR request with ID: {request_id}")
+        # For online mode, we want to avoid multiple OCR calls
+        # So we'll always get the raw result first, then process locally
+        raw_result = None
 
-        # Submit request to processor (works for both online and offline)
-        print("[OCR Common] Submitting request to processor")
-        processor.submit_request(ocr_request)
+        # Only call OCR API if we don't already have the raw result
+        if raw_result is None:
+            # Step 1: Basic OCR processing
+            # Create request
+            ocr_request = OCRRequest(request_id, image, prompt)
+            print(f"[OCR Common] Created OCR request with ID: {request_id}")
 
-        # Wait for result (works for both online and offline)
-        print("[OCR Common] Waiting for OCR result")
-        result = await processor.wait_for_result(request_id)
+            # Submit request to processor (works for both online and offline)
+            print("[OCR Common] Submitting request to processor")
+            processor.submit_request(ocr_request)
 
-        if result["status"] == "error":
-            print(f"[OCR Common] OCR processing failed: {result['error']}")
-            return result
+            # Wait for result (works for both online and offline)
+            print("[OCR Common] Waiting for OCR result")
+            result = await processor.wait_for_result(request_id)
 
-        # Store raw result
-        raw_result = result["result"]
-        print(f"[OCR Common] OCR processing completed, result length: {len(raw_result)}")
+            if result["status"] == "error":
+                print(f"[OCR Common] OCR processing failed: {result['error']}")
+                return result
+
+            # Store raw result
+            raw_result = result["result"]
+            print(f"[OCR Common] OCR processing completed, result length: {len(raw_result)}")
 
         # Initialize variables
         processed_result = ''
@@ -82,13 +91,18 @@ async def dowith_ocr_request(image: Image.Image, prompt: str = None, request_id:
         timestamp = None
 
         # Step 2: Process based on level
+        print(f"[OCR Common] Processing level: {level}")
         if level == "raw":
+            print(f"[OCR Common] Returning raw result, length: {len(raw_result)}")
             final_result = raw_result
 
         elif level == "clean":
+            print(f"[OCR Common] Cleaning result, raw length: {len(raw_result)}")
             final_result = clean_ref_tags(raw_result)  # Clean from raw result
+            print(f"[OCR Common] Cleaned result, length: {len(final_result)}")
 
         elif level == "image_clean":
+            print(f"[OCR Common] Processing image_clean level, raw result length: {len(raw_result)}")
             # Create a temporary directory for this request with timestamp
             timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
             request_output_path = f"/tmp/ocr_{timestamp}_{request_id}"
@@ -130,6 +144,7 @@ async def dowith_ocr_request(image: Image.Image, prompt: str = None, request_id:
                 f.write(vl_analyzed_result)
         else:
             # No matching level, just return raw result
+            print(f"[OCR Common] Unknown level '{level}', returning raw result, length: {len(raw_result)}")
             final_result = raw_result
 
         print(f"[OCR Common] Returning result with length: {len(final_result)}")

@@ -7,7 +7,8 @@ import sys
 import os
 
 # Add project root to path
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, project_root)
 
 from batch.batch_processor import BatchProcessor
 from batch.config import STAGE_OCR, STAGE_CLEAN, STAGE_IMAGE_CLEAN, STAGE_ALL

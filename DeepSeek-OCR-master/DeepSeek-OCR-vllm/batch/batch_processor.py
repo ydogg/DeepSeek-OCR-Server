@@ -10,13 +10,18 @@ import os
 import glob
 import asyncio
 import threading
+import torch
 from concurrent.futures import ThreadPoolExecutor
 from tqdm import tqdm
 from PIL import Image
 
-# Set environment variables to ensure compatibility
+# 设置环境变量（与run_dpsk_ocr_eval_batch.py保持一致）
 os.environ['VLLM_USE_V1'] = '0'
 os.environ["CUDA_VISIBLE_DEVICES"] = '0'
+
+# 针对特定CUDA版本的处理
+if torch.version.cuda == '11.8':
+    os.environ["TRITON_PTXAS_PATH"] = "/usr/local/cuda-11.8/bin/ptxas"
 
 from vllm import LLM, SamplingParams
 from vllm.model_executor.models.registry import ModelRegistry
@@ -58,31 +63,40 @@ class BatchProcessor:
 
     def _initialize_vllm_engine(self):
         """Initialize vLLM engine for batch OCR processing"""
-        ModelRegistry.register_model("DeepseekOCRForCausalLM", DeepseekOCRForCausalLM)
+        try:
+            print(f"Initializing model with path: {self.ocr_config['model_path']}")
+            ModelRegistry.register_model("DeepseekOCRForCausalLM", DeepseekOCRForCausalLM)
 
-        engine_args = {
-            "model": self.ocr_config['model_path'],
-            "hf_overrides": {"architectures": ["DeepseekOCRForCausalLM"]},
-            "block_size": 256,
-            "enforce_eager": False,
-            "trust_remote_code": True,
-            "max_model_len": 8192,
-            "swap_space": 0,
-            "max_num_seqs": self.processing_config['max_concurrency'],
-            "tensor_parallel_size": 1,
-            "gpu_memory_utilization": 0.9,
-        }
+            engine_args = {
+                "model": self.ocr_config['model_path'],
+                "hf_overrides": {"architectures": ["DeepseekOCRForCausalLM"]},
+                "block_size": 256,
+                "enforce_eager": False,
+                "trust_remote_code": True,
+                "max_model_len": 8192,
+                "swap_space": 0,
+                "max_num_seqs": self.processing_config['max_concurrency'],
+                "tensor_parallel_size": 1,
+                "gpu_memory_utilization": 0.9,
+            }
 
-        logits_processors = [NoRepeatNGramLogitsProcessor(ngram_size=40, window_size=90, whitelist_token_ids={128821, 128822})]
+            print("Engine args:", engine_args)
 
-        self.sampling_params = SamplingParams(
-            temperature=0.0,
-            max_tokens=8192,
-            logits_processors=logits_processors,
-            skip_special_tokens=False,
-        )
+            logits_processors = [NoRepeatNGramLogitsProcessor(ngram_size=40, window_size=90, whitelist_token_ids={128821, 128822})]
 
-        self.llm = LLM(**engine_args)
+            self.sampling_params = SamplingParams(
+                temperature=0.0,
+                max_tokens=8192,
+                logits_processors=logits_processors,
+                skip_special_tokens=False,
+            )
+
+            print("Initializing LLM engine...")
+            self.llm = LLM(**engine_args)
+            print("LLM engine initialized successfully")
+        except Exception as e:
+            print(f"Failed to initialize model: {e}")
+            raise
 
     def process_ocr_batch(self, image_paths):
         """First stage: OCR batch processing using vLLM"""
