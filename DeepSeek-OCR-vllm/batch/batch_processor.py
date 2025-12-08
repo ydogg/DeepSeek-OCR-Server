@@ -204,21 +204,34 @@ class BatchProcessor:
         return image_clean_results
 
     def save_results(self, results, image_paths, stage):
-        """Save results to output directory with server-compatible structure"""
+        """Save results to output directory with simplified structure"""
         output_dir = os.path.join(self.batch_config['output_dir'], stage)
         os.makedirs(output_dir, exist_ok=True)
 
         for result, image_path in zip(results, image_paths):
             filename = os.path.basename(image_path)
-            name, _ = os.path.splitext(filename)
+            name, ext = os.path.splitext(filename)
 
-            # Create request-specific directory like server does
-            request_output_path = os.path.join(output_dir, f"{name}_{stage}")
-            os.makedirs(request_output_path, exist_ok=True)
-            os.makedirs(os.path.join(request_output_path, "images"), exist_ok=True)
+            # Only create subdirectories for md_image stage (which contains images)
+            if stage == STAGE_MD_IMAGE:
+                # Create request-specific directory for md_image (contains images)
+                request_output_path = os.path.join(output_dir, f"{name}_{stage}")
+                os.makedirs(request_output_path, exist_ok=True)
+                os.makedirs(os.path.join(request_output_path, "images"), exist_ok=True)
+                output_path = os.path.join(request_output_path, "result_md_image.mmd")
+            else:
+                # For other stages, save directly in the stage directory
+                if stage == STAGE_OCR:
+                    output_filename = "result_ori.mmd"
+                elif stage == STAGE_MD_TEXT:
+                    output_filename = "result_md_text.mmd"
+                elif stage == STAGE_MD_MERGED:
+                    output_filename = "result_vl.mmd"
+                else:
+                    output_filename = f"result_{stage}.mmd"
 
-            # Save result in the same format as server
-            output_path = os.path.join(request_output_path, f"result_{stage}.mmd")
+                output_path = os.path.join(output_dir, f"{name}_{stage}.mmd")
+
             with open(output_path, 'w', encoding='utf-8') as f:
                 f.write(result)
 
@@ -241,11 +254,12 @@ class BatchProcessor:
         # Create main output directory
         os.makedirs(output_dir, exist_ok=True)
 
-        # Get image paths
+        # Get image paths (recursive)
         image_extensions = ['*.jpg', '*.jpeg', '*.png', '*.bmp', '*.tiff']
         image_paths = []
         for ext in image_extensions:
-            image_paths.extend(glob.glob(os.path.join(input_dir, ext)))
+            # Use recursive glob to find images in subdirectories
+            image_paths.extend(glob.glob(os.path.join(input_dir, '**', ext), recursive=True))
 
         if not image_paths:
             print(f"No images found in {input_dir}")
@@ -261,8 +275,14 @@ class BatchProcessor:
 
         # Stage 1: OCR processing
         if STAGE_OCR in stages or STAGE_ALL in stages:
-            raw_results = self.process_ocr_batch(image_paths)
-            self.save_results(raw_results, image_paths, STAGE_OCR)
+            # Check if results already exist
+            existing_results = self.load_existing_results(image_paths, STAGE_OCR)
+            if existing_results and all(result != "" for result in existing_results):
+                print("Found existing raw results, skipping OCR processing...")
+                raw_results = existing_results
+            else:
+                raw_results = self.process_ocr_batch(image_paths)
+                self.save_results(raw_results, image_paths, STAGE_OCR)
 
         # Stage 2: md_image processing
         if STAGE_MD_IMAGE in stages or STAGE_ALL in stages:
@@ -297,18 +317,46 @@ class BatchProcessor:
         print("Batch processing completed!")
 
     def load_existing_results(self, image_paths, stage):
-        """Load existing results from a previous stage"""
-        results = []
+        """Load existing results for a specific stage to skip reprocessing"""
         stage_dir = os.path.join(self.batch_config['output_dir'], stage)
+        results = []
 
         if not os.path.exists(stage_dir):
-            print(f"No existing {stage} results found")
-            return None
+            print(f"No existing {stage} results found (directory doesn't exist)")
+            return [""] * len(image_paths)
 
         for image_path in image_paths:
             filename = os.path.basename(image_path)
-            name, _ = os.path.splitext(filename)
-            result_path = os.path.join(stage_dir, f"{name}_{stage}.md")
+            name, ext = os.path.splitext(filename)
+
+            # For md_image stage, check the subdirectory structure
+            if stage == STAGE_MD_IMAGE:
+                # Try new format first (subdirectory structure)
+                result_dir = os.path.join(stage_dir, f"{name}_{stage}")
+                result_path = os.path.join(result_dir, "result_md_image.mmd")
+                # Fallback to old format
+                if not os.path.exists(result_path):
+                    old_format_path = os.path.join(stage_dir, f"{name}_{stage}.md")
+                    if os.path.exists(old_format_path):
+                        result_path = old_format_path
+            else:
+                # For other stages, check direct files in stage directory
+                if stage == STAGE_OCR:
+                    result_filename = "result_ori.mmd"
+                elif stage == STAGE_MD_TEXT:
+                    result_filename = "result_md_text.mmd"
+                elif stage == STAGE_MD_MERGED:
+                    result_filename = "result_vl.mmd"
+                else:
+                    result_filename = f"result_{stage}.mmd"
+
+                # Try new format first (direct file with .mmd extension)
+                result_path = os.path.join(stage_dir, f"{name}_{stage}.mmd")
+                # Fallback to old format with .md extension
+                if not os.path.exists(result_path):
+                    old_format_path = os.path.join(stage_dir, f"{name}_{stage}.md")
+                    if os.path.exists(old_format_path):
+                        result_path = old_format_path
 
             if os.path.exists(result_path):
                 with open(result_path, 'r', encoding='utf-8') as f:

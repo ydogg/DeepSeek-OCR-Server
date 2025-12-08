@@ -312,11 +312,25 @@ def process_bounding_boxes(request: 'OCRImageRequest', img: Image.Image, raw_res
     # Process image matches with special prefix for OCR detected images
     processed_result = raw_result
     for idx, a_match_image in enumerate(matches_images):
-        processed_result = processed_result.replace(a_match_image, f'![](images/ocr_detected_{idx}.jpg)\n')
+        # Handle both string and tuple formats
+        if isinstance(a_match_image, tuple):
+            # If it's a tuple, use the first element (the full match string)
+            match_string = a_match_image[0]
+        else:
+            # If it's already a string, use it directly
+            match_string = a_match_image
+        processed_result = processed_result.replace(match_string, f'![](images/ocr_detected_{idx}.jpg)\n')
 
     # Process other matches
     for idx, a_match_other in enumerate(matches_other):
-        processed_result = processed_result.replace(a_match_other, '').replace('\\coloneqq', ':=').replace('\\eqqcolon', '=:')
+        # Handle both string and tuple formats
+        if isinstance(a_match_other, tuple):
+            # If it's a tuple, use the first element (the full match string)
+            match_string = a_match_other[0]
+        else:
+            # If it's already a string, use it directly
+            match_string = a_match_other
+        processed_result = processed_result.replace(match_string, '').replace('\\coloneqq', ':=').replace('\\eqqcolon', '=:')
 
     return processed_result
 

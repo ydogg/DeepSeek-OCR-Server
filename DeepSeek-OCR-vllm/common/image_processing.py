@@ -51,8 +51,19 @@ def rematch_image(text, request_output_path=None):
 def extract_coordinates_and_label(ref_text, image_width, image_height):
     """Extract coordinates and label from ref text"""
     try:
-        label_type = ref_text[1]
-        cor_list = eval(ref_text[2])
+        # Parse the ref text to extract label type and coordinates
+        # Format: <|ref|>label_type<|/ref|><|det|>[[x1, y1, x2, y2], ...]<|/det|>
+        ref_pattern = r'<\|ref\|>(.*?)<\|/ref\|>'
+        det_pattern = r'<\|det\|>(.*?)<\|/det\|>'
+
+        ref_match = re.search(ref_pattern, ref_text)
+        det_match = re.search(det_pattern, ref_text)
+
+        if not ref_match or not det_match:
+            return None
+
+        label_type = ref_match.group(1)
+        cor_list = eval(det_match.group(1))
     except Exception:
         return None
 
@@ -84,7 +95,13 @@ def draw_bounding_boxes(image, refs, output_path):
 
     for i, ref in enumerate(refs):
         try:
-            result = extract_coordinates_and_label(ref, image_width, image_height)
+            # Extract the full match string from the tuple
+            if isinstance(ref, tuple) and len(ref) > 0:
+                ref_text = ref[0]
+            else:
+                ref_text = ref
+
+            result = extract_coordinates_and_label(ref_text, image_width, image_height)
             if result:
                 label_type, points_list = result
 
@@ -102,7 +119,8 @@ def draw_bounding_boxes(image, refs, output_path):
                     if label_type == 'image':
                         try:
                             cropped = image.crop((x1, y1, x2, y2))
-                            cropped.save(f"{output_path}/images/ocr_detected_{img_idx}.jpg")
+                            save_path = f"{output_path}/images/ocr_detected_{img_idx}.jpg"
+                            cropped.save(save_path)
                         except Exception as e:
                             pass
                         img_idx += 1
