@@ -204,15 +204,21 @@ class BatchProcessor:
         return image_clean_results
 
     def save_results(self, results, image_paths, stage):
-        """Save results to output directory"""
+        """Save results to output directory with server-compatible structure"""
         output_dir = os.path.join(self.batch_config['output_dir'], stage)
         os.makedirs(output_dir, exist_ok=True)
 
         for result, image_path in zip(results, image_paths):
             filename = os.path.basename(image_path)
             name, _ = os.path.splitext(filename)
-            output_path = os.path.join(output_dir, f"{name}_{stage}.md")
 
+            # Create request-specific directory like server does
+            request_output_path = os.path.join(output_dir, f"{name}_{stage}")
+            os.makedirs(request_output_path, exist_ok=True)
+            os.makedirs(os.path.join(request_output_path, "images"), exist_ok=True)
+
+            # Save result in the same format as server
+            output_path = os.path.join(request_output_path, f"result_{stage}.mmd")
             with open(output_path, 'w', encoding='utf-8') as f:
                 f.write(result)
 
