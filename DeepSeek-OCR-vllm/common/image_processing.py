@@ -51,23 +51,33 @@ def rematch_image(text, request_output_path=None):
 def extract_coordinates_and_label(ref_text, image_width, image_height):
     """Extract coordinates and label from ref text"""
     try:
-        # Parse the ref text to extract label type and coordinates
-        # Format: <|ref|>label_type<|/ref|><|det|>[[x1, y1, x2, y2], ...]<|/det|>
-        ref_pattern = r'<\|ref\|>(.*?)<\|/ref\|>'
-        det_pattern = r'<\|det\|>(.*?)<\|/det\|>'
+        # Handle both tuple format (from single image processing) and string format (from other sources)
+        if isinstance(ref_text, tuple):
+            # Format: (full_match, label_type, coordinates_string)
+            if len(ref_text) >= 3:
+                label_type = ref_text[1]
+                cor_list = eval(ref_text[2])
+            else:
+                # If tuple doesn't have expected format, try to parse as string
+                ref_text = ref_text[0] if len(ref_text) > 0 else str(ref_text)
+        else:
+            # Parse the ref text to extract label type and coordinates
+            # Format: <|ref|>label_type<|/ref|><|det|>[[x1, y1, x2, y2], ...]<|/det|>
+            ref_pattern = r'<\|ref\|>(.*?)<\|/ref\|>'
+            det_pattern = r'<\|det\|>(.*?)<\|/det\|>'
 
-        ref_match = re.search(ref_pattern, ref_text)
-        det_match = re.search(det_pattern, ref_text)
+            ref_match = re.search(ref_pattern, str(ref_text))
+            det_match = re.search(det_pattern, str(ref_text))
 
-        if not ref_match or not det_match:
-            return None
+            if not ref_match or not det_match:
+                return None
 
-        label_type = ref_match.group(1)
-        cor_list = eval(det_match.group(1))
+            label_type = ref_match.group(1)
+            cor_list = eval(det_match.group(1))
+
+        return (label_type, cor_list)
     except Exception:
         return None
-
-    return (label_type, cor_list)
 
 
 def draw_bounding_boxes(image, refs, output_path):
@@ -87,7 +97,13 @@ def draw_bounding_boxes(image, refs, output_path):
     draw2 = ImageDraw.Draw(overlay)
 
     try:
-        font = ImageFont.load_default()
+        # Try to use a larger font, fallback to default if not available
+        try:
+            # Try to load a larger default font
+            font = ImageFont.load_default().font_variant(size=11)
+        except:
+            # Fallback to default font if size adjustment is not supported
+            font = ImageFont.load_default()
     except IOError:
         font = ImageFont.load_default()
 

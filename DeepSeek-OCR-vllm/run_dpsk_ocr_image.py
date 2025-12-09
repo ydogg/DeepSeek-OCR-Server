@@ -80,7 +80,13 @@ def draw_bounding_boxes(image, refs):
     draw2 = ImageDraw.Draw(overlay)
     
     #     except IOError:
-    font = ImageFont.load_default()
+    # Try to use a larger font, fallback to default if not available
+    try:
+        # Try to load a larger default font
+        font = ImageFont.load_default().font_variant(size=11)
+    except:
+        # Fallback to default font if size adjustment is not supported
+        font = ImageFont.load_default()
 
     img_idx = 0
     
@@ -148,7 +154,7 @@ async def stream_generate(image=None, prompt=''):
 
 
     engine_args = AsyncEngineArgs(
-        model=MODEL_PATH,
+        model=OCR_MODEL_PATH,
         hf_overrides={"architectures": ["DeepseekOCRForCausalLM"]},
         block_size=256,
         max_model_len=8192,
