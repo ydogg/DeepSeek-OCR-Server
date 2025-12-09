@@ -4,6 +4,8 @@ PyMuPDF
 img2pdf
 einops
 easydict
-addict 
+addict
 Pillow
 numpy
+gradio>=3.36.0
+requests>=2.28.0
