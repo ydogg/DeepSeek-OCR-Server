@@ -146,12 +146,14 @@ class BatchProcessor:
 
         return clean_results
 
-    def process_md_image_batch(self, raw_results):
+    def process_md_image_batch(self, raw_results, image_paths):
         """New stage: md_image batch processing (keep image tags)"""
         print(f"Processing md_image for {len(raw_results)} results...")
 
         md_image_results = []
-        for result in tqdm(raw_results, desc="Processing md_image results"):
+        for idx, (result, image_path) in enumerate(tqdm(zip(raw_results, image_paths),
+                                                       total=len(raw_results),
+                                                       desc="Processing md_image results")):
             # First clean non-image tags
             md_image_result = clean_ref_tags(result, keep_image_tags=True)
             # Then convert image tags to Markdown format
@@ -159,6 +161,52 @@ class BatchProcessor:
             md_image_results.append(md_image_result)
 
         return md_image_results
+
+    def _copy_processed_images_for_md_image(self, image_paths):
+        """Copy processed images from processed_images directory to md_image directories"""
+        processed_images_dir = os.path.join(self.batch_config['output_dir'], "processed_images")
+        md_image_dir = os.path.join(self.batch_config['output_dir'], STAGE_MD_IMAGE)
+
+        if not os.path.exists(processed_images_dir):
+            print("No processed_images directory found, skipping image copying")
+            return
+
+        if not os.path.exists(md_image_dir):
+            print("No md_image directory found, skipping image copying")
+            return
+
+        print("Copying processed images to md_image directories...")
+
+        for image_path in tqdm(image_paths, desc="Copying images"):
+            filename = os.path.basename(image_path)
+            name, ext = os.path.splitext(filename)
+
+            # Source directory (from processed_images)
+            source_request_dir = os.path.join(processed_images_dir, name)
+            source_images_dir = os.path.join(source_request_dir, "images")
+
+            # Destination directory (in md_image stage)
+            dest_request_dir = os.path.join(md_image_dir, f"{name}_{STAGE_MD_IMAGE}")
+            dest_images_dir = os.path.join(dest_request_dir, "images")
+
+            # Check if source directory exists
+            if os.path.exists(source_images_dir):
+                # Create destination directory if it doesn't exist
+                os.makedirs(dest_images_dir, exist_ok=True)
+
+                # Copy all images from source to destination
+                for image_file in os.listdir(source_images_dir):
+                    source_image_path = os.path.join(source_images_dir, image_file)
+                    dest_image_path = os.path.join(dest_images_dir, image_file)
+
+                    # Copy the image file
+                    try:
+                        from shutil import copy2
+                        copy2(source_image_path, dest_image_path)
+                    except Exception as e:
+                        print(f"Warning: Failed to copy {source_image_path} to {dest_image_path}: {e}")
+            else:
+                print(f"Warning: Source images directory not found for {name}")
 
     def process_md_merged_batch(self, raw_results, image_paths):
         """Third stage: md_merged batch processing"""
@@ -218,19 +266,19 @@ class BatchProcessor:
                 request_output_path = os.path.join(output_dir, f"{name}_{stage}")
                 os.makedirs(request_output_path, exist_ok=True)
                 os.makedirs(os.path.join(request_output_path, "images"), exist_ok=True)
-                output_path = os.path.join(request_output_path, "result_md_image.mmd")
+                output_path = os.path.join(request_output_path, "result_md_image.md")
             else:
                 # For other stages, save directly in the stage directory
                 if stage == STAGE_OCR:
-                    output_filename = "result_ori.mmd"
+                    output_filename = "result_ori.md"
                 elif stage == STAGE_MD_TEXT:
-                    output_filename = "result_md_text.mmd"
+                    output_filename = "result_md_text.md"
                 elif stage == STAGE_MD_MERGED:
-                    output_filename = "result_vl.mmd"
+                    output_filename = "result_vl.md"
                 else:
-                    output_filename = f"result_{stage}.mmd"
+                    output_filename = f"result_{stage}.md"
 
-                output_path = os.path.join(output_dir, f"{name}_{stage}.mmd")
+                output_path = os.path.join(output_dir, f"{name}_{stage}.md")
 
             with open(output_path, 'w', encoding='utf-8') as f:
                 f.write(result)
@@ -291,8 +339,11 @@ class BatchProcessor:
                 raw_results = self.load_existing_results(image_paths, STAGE_OCR)
 
             if raw_results:
-                md_image_results = self.process_md_image_batch(raw_results)
+                md_image_results = self.process_md_image_batch(raw_results, image_paths)
                 self.save_results(md_image_results, image_paths, STAGE_MD_IMAGE)
+
+                # Copy processed images to md_image directories for proper display
+                self._copy_processed_images_for_md_image(image_paths)
 
         # Stage 3: md_text processing
         if STAGE_MD_TEXT in stages or STAGE_ALL in stages:
@@ -314,6 +365,11 @@ class BatchProcessor:
                 image_clean_results = self.process_md_merged_batch(raw_results, image_paths)
                 self.save_results(image_clean_results, image_paths, STAGE_MD_MERGED)
 
+        # Copy processed images to md_image directories for proper display
+        # This needs to be done after md_merged stage to ensure processed_images directory exists
+        if STAGE_MD_IMAGE in stages or STAGE_ALL in stages:
+            self._copy_processed_images_for_md_image(image_paths)
+
         print("Batch processing completed!")
 
     def load_existing_results(self, image_paths, stage):
@@ -333,7 +389,7 @@ class BatchProcessor:
             if stage == STAGE_MD_IMAGE:
                 # Try new format first (subdirectory structure)
                 result_dir = os.path.join(stage_dir, f"{name}_{stage}")
-                result_path = os.path.join(result_dir, "result_md_image.mmd")
+                result_path = os.path.join(result_dir, "result_md_image.md")
                 # Fallback to old format
                 if not os.path.exists(result_path):
                     old_format_path = os.path.join(stage_dir, f"{name}_{stage}.md")
@@ -342,19 +398,19 @@ class BatchProcessor:
             else:
                 # For other stages, check direct files in stage directory
                 if stage == STAGE_OCR:
-                    result_filename = "result_ori.mmd"
+                    result_filename = "result_ori.md"
                 elif stage == STAGE_MD_TEXT:
-                    result_filename = "result_md_text.mmd"
+                    result_filename = "result_md_text.md"
                 elif stage == STAGE_MD_MERGED:
-                    result_filename = "result_vl.mmd"
+                    result_filename = "result_vl.md"
                 else:
-                    result_filename = f"result_{stage}.mmd"
+                    result_filename = f"result_{stage}.md"
 
-                # Try new format first (direct file with .mmd extension)
-                result_path = os.path.join(stage_dir, f"{name}_{stage}.mmd")
-                # Fallback to old format with .md extension
+                # Try new format first (direct file with .md extension)
+                result_path = os.path.join(stage_dir, f"{name}_{stage}.md")
+                # Fallback to old format with .mmd extension
                 if not os.path.exists(result_path):
-                    old_format_path = os.path.join(stage_dir, f"{name}_{stage}.md")
+                    old_format_path = os.path.join(stage_dir, f"{name}_{stage}.mmd")
                     if os.path.exists(old_format_path):
                         result_path = old_format_path
 

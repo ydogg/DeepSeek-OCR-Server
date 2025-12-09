@@ -119,7 +119,7 @@ async def dowith_ocr_request(image: Image.Image, prompt: str = None, request_id:
             os.makedirs(f"{request_output_path}/images", exist_ok=True)
 
             # Save original result for processing
-            with open(f"{request_output_path}/result_ori.mmd", "w", encoding="utf-8") as f:
+            with open(f"{request_output_path}/result_ori.md", "w", encoding="utf-8") as f:
                 f.write(raw_result)
 
             # Step 3: Bounding box analysis
@@ -136,7 +136,7 @@ async def dowith_ocr_request(image: Image.Image, prompt: str = None, request_id:
             print(f"[OCR Common] Bounding box analysis completed for request {request_id}")
 
             # Save processed result
-            with open(f"{request_output_path}/result_boxing.mmd", "w", encoding="utf-8") as f:
+            with open(f"{request_output_path}/result_boxing.md", "w", encoding="utf-8") as f:
                 f.write(processed_result)
 
             # Step 4: VL analysis (only for md_merged mode)
@@ -147,7 +147,7 @@ async def dowith_ocr_request(image: Image.Image, prompt: str = None, request_id:
             final_result = vl_analyzed_result
 
             # Save VL analyzed result
-            with open(f"{request_output_path}/result_vl.mmd", "w", encoding="utf-8") as f:
+            with open(f"{request_output_path}/result_vl.md", "w", encoding="utf-8") as f:
                 f.write(vl_analyzed_result)
         else:
             # No matching level, just return raw result

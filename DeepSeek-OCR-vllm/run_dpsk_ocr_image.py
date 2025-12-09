@@ -229,7 +229,7 @@ if __name__ == "__main__":
 
         outputs = result_out
 
-        with open(f'{OUTPUT_PATH}/result_ori.mmd', 'w', encoding = 'utf-8') as afile:
+        with open(f'{OUTPUT_PATH}/result_ori.md', 'w', encoding = 'utf-8') as afile:
             afile.write(outputs)
 
         matches_ref, matches_images, mathes_other = re_match(outputs)
@@ -245,7 +245,7 @@ if __name__ == "__main__":
 
         # if 'structural formula' in conversation[0]['content']:
         #     outputs = '<smiles>' + outputs + '</smiles>'
-        with open(f'{OUTPUT_PATH}/result.mmd', 'w', encoding = 'utf-8') as afile:
+        with open(f'{OUTPUT_PATH}/result.md', 'w', encoding = 'utf-8') as afile:
             afile.write(outputs)
 
         if 'line_type' in outputs:
