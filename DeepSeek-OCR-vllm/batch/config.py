@@ -27,7 +27,7 @@ DEFAULT_BATCH_SIZE = 10
 # Whether to enable image analysis in md_merged stage
 ENABLE_IMAGE_ANALYSIS = True
 
-# VL model configuration for image analysis (copied from server/config.py)
+# VL model configuration for image analysis (copied from server_config.py)
 VL_MODEL_BASE_URL = "http://172.28.71.194:8000/v1"  # Default to local server
 VL_MODEL_API_KEY = "test"  # API key for the VL model if needed
 VL_MODEL_NAME = "gpt-5-chat"  # Model name for the VL model
@@ -37,13 +37,13 @@ If it's a table, extract and present the data in a structured format.
 If it's a diagram or flowchart, explain the process or relationships shown.
 If it's a photograph, describe the content and context."""  # Prompt for VL model analysis
 
-# LLM model configuration for output enhancement (copied from server/config.py)
+# LLM model configuration for output enhancement (copied from server_config.py)
 ENHANCEMENT_LLM_BASE_URL = "http://llm.necsoft.jn.com.cn:8000/v1"
 ENHANCEMENT_LLM_MODEL_NAME = "qwen3-coder"
 ENHANCEMENT_LLM_API_KEY = "test"
 VL_MODEL_ENHANCEMENT_PROMPT = "如果文字内容描述了流程图等UML风格的内容，将这些文字转为mermaid格式，其他无关文字直接保留即可。"
 
-# Default OCR prompt (copied from server/config.py)
+# Default OCR prompt (copied from server_config.py)
 DEFAULT_OCR_PROMPT = "<image>\n<|grounding|>Convert the document to markdown."
 
 

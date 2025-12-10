@@ -24,7 +24,7 @@ from server.schemas.models import (
     OCRImageRequest,
     ContentText
 )
-from server.config import ADDRESS, PORT, DEFAULT_OCR_PROMPT
+from server_config import ADDRESS, PORT, OCR_PROMPT
 
 # Add parent directory to path to import modules
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -186,7 +186,7 @@ async def create_chat_completion(request: ChatCompletionRequest):
         raise HTTPException(status_code=400, detail="No image data found in request")
 
     # Use provided text prompt or default from config
-    prompt = text_prompt if text_prompt is not None else DEFAULT_OCR_PROMPT
+    prompt = text_prompt if text_prompt is not None else OCR_PROMPT
     print(f"[OCR Main] Using prompt length: {len(prompt) if prompt else 0}")
 
     try:
@@ -250,7 +250,7 @@ async def ocr_image(request: OCRImageRequest):
         print(f"[OCR Main] Image decoded, size: {img.size if img else 'Unknown'}")
 
         # Use provided prompt or default from config
-        prompt = request.prompt if request.prompt is not None else DEFAULT_OCR_PROMPT
+        prompt = request.prompt if request.prompt is not None else OCR_PROMPT
         print(f"[OCR Main] Using prompt length: {len(prompt) if prompt else 0}")
 
         # Process OCR using common method with specified level

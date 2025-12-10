@@ -25,7 +25,7 @@ from vllm.engine.async_llm_engine import AsyncEngineDeadError
 from process.ngram_norepeat import NoRepeatNGramLogitsProcessor
 from process.image_process import DeepseekOCRProcessor
 from config import OCR_MODEL_PATH, OCR_PROMPT, CROP_MODE, MAX_CONCURRENCY
-from server.config import MAX_WORKER_THREADS
+from server_config import MAX_WORKER_THREADS
 from server.schemas.models import OCRRequest
 from server.core.utils import clean_ref_tags
 

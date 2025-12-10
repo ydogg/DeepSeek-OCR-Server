@@ -32,13 +32,13 @@ def get_processing_config():
 def get_server_config():
     """Get server-specific configuration"""
     try:
-        from server.config import (
+        from server_config import (
             ADDRESS, PORT, MAX_WORKER_THREADS, ONLINE_OCR_MODE,
             ONLINE_OCR_BASE_URL, ONLINE_OCR_MODEL_NAME, ONLINE_OCR_API_KEY,
             VL_MODEL_BASE_URL, VL_MODEL_API_KEY, VL_MODEL_NAME,
             VL_MODEL_ANALYSIS_PROMPT, ENHANCEMENT_LLM_BASE_URL,
             ENHANCEMENT_LLM_MODEL_NAME, ENHANCEMENT_LLM_API_KEY,
-            VL_MODEL_ENHANCEMENT_PROMPT, DEFAULT_OCR_PROMPT
+            VL_MODEL_ENHANCEMENT_PROMPT, OCR_PROMPT
         )
         return {
             'address': ADDRESS,
@@ -56,8 +56,8 @@ def get_server_config():
             'enhancement_llm_model_name': ENHANCEMENT_LLM_MODEL_NAME,
             'enhancement_llm_api_key': ENHANCEMENT_LLM_API_KEY,
             'vl_model_enhancement_prompt': VL_MODEL_ENHANCEMENT_PROMPT,
-            'default_ocr_prompt': DEFAULT_OCR_PROMPT
+            'default_ocr_prompt': OCR_PROMPT
         }
     except ImportError:
-        # If server.config is not available, return None or default values
+        # If server_config is not available, return None or default values
         return None

@@ -4,7 +4,7 @@ import io
 from PIL import Image
 
 from server.schemas.models import OCRRequest
-from server.config import ONLINE_OCR_BASE_URL, ONLINE_OCR_MODEL_NAME, ONLINE_OCR_API_KEY, OCR_PROMPT
+from server_config import ONLINE_OCR_BASE_URL, ONLINE_OCR_MODEL_NAME, ONLINE_OCR_API_KEY, OCR_PROMPT
 
 # Use OpenAI client for online OCR
 from openai import OpenAI
@@ -43,7 +43,7 @@ class OnlineOCRProcessor:
         # For online mode, processing happens directly
 
         # Use default prompt from config if none provided
-        from server.config import OCR_PROMPT
+        from server_config import OCR_PROMPT
         prompt = ocr_request.prompt if ocr_request.prompt is not None else OCR_PROMPT
         #print(f"[Online OCR] Using prompt: {repr(prompt)}")
 

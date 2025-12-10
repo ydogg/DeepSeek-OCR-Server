@@ -15,7 +15,7 @@ import io
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Import configuration
-from server.config import DEFAULT_OCR_PROMPT, ADDRESS, PORT
+from server_config import OCR_PROMPT, ADDRESS, PORT
 
 # Server configuration
 SERVER_URL = f"http://{ADDRESS}:{PORT}/v1/ocr"
@@ -92,7 +92,7 @@ with gr.Blocks(title="NECJN Document->MarkDown Service UI") as demo:
             image_input = gr.Image(type="pil", label="Upload Image")
             prompt_input = gr.Textbox(
                 label="OCR Prompt",
-                value=DEFAULT_OCR_PROMPT,
+                value=OCR_PROMPT,
                 lines=3,
                 placeholder="Enter OCR prompt (optional)"
             )

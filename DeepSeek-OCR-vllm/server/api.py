@@ -15,7 +15,7 @@ import numpy as np
 from server.schemas.models import OCRRequest
 from server.core.utils import clean_ref_tags
 from common.text_processing import convert_image_tags_to_md
-from server.config import VL_MODEL_BASE_URL, VL_MODEL_API_KEY, VL_MODEL_NAME, VL_MODEL_ANALYSIS_PROMPT, ENHANCEMENT_LLM_BASE_URL, ENHANCEMENT_LLM_MODEL_NAME, ENHANCEMENT_LLM_API_KEY, VL_MODEL_ENHANCEMENT_PROMPT, DEFAULT_OCR_PROMPT
+from server_config import VL_MODEL_BASE_URL, VL_MODEL_API_KEY, VL_MODEL_NAME, VL_MODEL_ANALYSIS_PROMPT, ENHANCEMENT_LLM_BASE_URL, ENHANCEMENT_LLM_MODEL_NAME, ENHANCEMENT_LLM_API_KEY, VL_MODEL_ENHANCEMENT_PROMPT, OCR_PROMPT
 
 # Import processor from instances module to use the same instance
 from server.core.instances import processor
@@ -35,7 +35,7 @@ async def dowith_ocr_request(image: Image.Image, prompt: str = None, request_id:
 
     Args:
         image: PIL Image to process
-        prompt: OCR prompt to use (defaults to DEFAULT_OCR_PROMPT if None)
+        prompt: OCR prompt to use (defaults to OCR_PROMPT if None)
         request_id: Request ID (generates new one if None)
         level: Processing level - "raw", "md_image", "md_text", or "md_merged"
 
@@ -44,7 +44,7 @@ async def dowith_ocr_request(image: Image.Image, prompt: str = None, request_id:
     """
     # Use provided prompt or default from config
     if prompt is None:
-        prompt = DEFAULT_OCR_PROMPT
+        prompt = OCR_PROMPT
 
     # Generate request ID if not provided
     if request_id is None:
@@ -54,7 +54,7 @@ async def dowith_ocr_request(image: Image.Image, prompt: str = None, request_id:
     print(f"[OCR Common] Request details - Image size: {image.size if image else 'Unknown'}, Prompt length: {len(prompt) if prompt else 0}")
 
     # Import ONLINE_OCR_MODE to determine processing mode
-    from server.config import ONLINE_OCR_MODE
+    from server_config import ONLINE_OCR_MODE
 
     try:
         # For online mode, we want to avoid multiple OCR calls
@@ -509,7 +509,8 @@ async def call_vl_model(image_base64: str):
         response = await client.chat.completions.create(
             model=VL_MODEL_NAME,
             messages=messages,
-            max_tokens=16384
+            #max_tokens=16384
+            max_tokens=8100
         )
 
         print(f"[VL Analysis] API call completed successfully")

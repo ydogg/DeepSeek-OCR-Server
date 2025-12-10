@@ -37,11 +37,11 @@ cd server
 python -m server.main
 ```
 
-服务器将在 `http://0.0.0.0:8001` 启动（地址和端口可在 `server/config.py` 中配置）
+服务器将在 `http://0.0.0.0:8001` 启动（地址和端口可在 `server_config.py` 中配置）
 
 ### 运行模式配置
 
-服务器支持两种运行模式，通过 `server/config.py` 中的 `ONLINE_OCR_MODE` 配置项进行切换：
+服务器支持两种运行模式，通过 `server_config.py` 中的 `ONLINE_OCR_MODE` 配置项进行切换：
 
 - `ONLINE_OCR_MODE = False`：本地模式，使用本地 vLLM 运行 DeepSeek OCR 模型
 - `ONLINE_OCR_MODE = True`：远程模式，通过 OpenAI 兼容 API 调用远程 OCR 服务
@@ -106,7 +106,7 @@ python -m server.main
 - 裁剪模式来自 `config.py`
 - 最大并发数来自 `config.py`
 
-服务器还有独立的配置选项，位于 `server/config.py`：
+服务器还有独立的配置选项，位于 `server_config.py`：
 - `MAX_WORKER_THREADS`：工作线程数量（默认值：1，最大值：2）
 - `ADDRESS`：服务器监听地址（默认值：0.0.0.0）
 - `PORT`：服务器监听端口（默认值：8001）
@@ -115,9 +115,9 @@ python -m server.main
 - `ONLINE_OCR_MODEL_NAME`：远程 OCR 模型名称
 - `ONLINE_OCR_API_KEY`：远程 OCR API 的访问密钥
 
-您可以通过修改 `server/config.py` 文件中的配置值来调整服务器设置：
+您可以通过修改 `server_config.py` 文件中的配置值来调整服务器设置：
 ```python
-# In server/config.py
+# In server_config.py
 MAX_WORKER_THREADS = 2
 ADDRESS = "0.0.0.0"
 PORT = 8001
