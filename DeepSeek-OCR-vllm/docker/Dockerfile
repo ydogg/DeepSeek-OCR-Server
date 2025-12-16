@@ -26,10 +26,6 @@ COPY gradio/requirements.txt /app/gradio/requirements.txt
 RUN pip install -r /app/server/requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple --cert ./ZscalerRootCertificate.crt
 RUN pip install -r /app/gradio/requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple --cert ./ZscalerRootCertificate.crt
 
-# Install additional dependencies that are not in requirements.txt
-# These are needed for the code to load properly even though they may not be used in online mode
-RUN pip install transformers==4.46.3 tokenizers==0.20.3 PyMuPDF img2pdf einops easydict addict Pillow numpy vllm -i https://pypi.tuna.tsinghua.edu.cn/simple --cert ./ZscalerRootCertificate.crt
-
 # Copy the application code
 COPY . /app
 
