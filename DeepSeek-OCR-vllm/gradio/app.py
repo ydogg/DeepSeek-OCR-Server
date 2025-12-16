@@ -15,10 +15,10 @@ import io
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Import configuration
-from server_config import OCR_PROMPT, ADDRESS, PORT
+from config_loader import SERVER_CONFIG, COMMON_CONFIG
 
 # Server configuration
-SERVER_URL = f"http://{ADDRESS}:{PORT}/v1/ocr"
+SERVER_URL = f"http://{SERVER_CONFIG.address}:{SERVER_CONFIG.port}/v1/ocr"
 
 def image_to_base64(image: Image.Image) -> str:
     """Convert PIL Image to base64 string"""
@@ -92,7 +92,7 @@ with gr.Blocks(title="NECJN Document->MarkDown Service UI") as demo:
             image_input = gr.Image(type="pil", label="Upload Image")
             prompt_input = gr.Textbox(
                 label="OCR Prompt",
-                value=OCR_PROMPT,
+                value=COMMON_CONFIG.ocr_prompt,
                 lines=3,
                 placeholder="Enter OCR prompt (optional)"
             )

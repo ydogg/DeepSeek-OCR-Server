@@ -11,7 +11,15 @@ project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, project_root)
 
 from batch.batch_processor import BatchProcessor
-from batch.config import STAGE_OCR, STAGE_MD_IMAGE, STAGE_MD_TEXT, STAGE_MD_MERGED, STAGE_ALL
+# Import configurations
+from config_loader import BATCH_CONFIG
+
+# Define constants directly from configuration
+STAGE_OCR = 'raw'
+STAGE_MD_IMAGE = 'md_image'
+STAGE_MD_TEXT = 'md_text'
+STAGE_MD_MERGED = 'md_merged'
+STAGE_ALL = 'all'
 
 
 def main():

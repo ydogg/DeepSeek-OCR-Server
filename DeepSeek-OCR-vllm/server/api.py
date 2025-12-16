@@ -15,7 +15,7 @@ import numpy as np
 from server.schemas.models import OCRRequest
 from server.core.utils import clean_ref_tags
 from common.text_processing import convert_image_tags_to_md
-from server_config import VL_MODEL_BASE_URL, VL_MODEL_API_KEY, VL_MODEL_NAME, VL_MODEL_ANALYSIS_PROMPT, ENHANCEMENT_LLM_BASE_URL, ENHANCEMENT_LLM_MODEL_NAME, ENHANCEMENT_LLM_API_KEY, VL_MODEL_ENHANCEMENT_PROMPT, OCR_PROMPT
+from config_loader import SERVER_CONFIG, COMMON_CONFIG
 
 # Import processor from instances module to use the same instance
 from server.core.instances import processor
@@ -44,7 +44,7 @@ async def dowith_ocr_request(image: Image.Image, prompt: str = None, request_id:
     """
     # Use provided prompt or default from config
     if prompt is None:
-        prompt = OCR_PROMPT
+        prompt = COMMON_CONFIG.ocr_prompt
 
     # Generate request ID if not provided
     if request_id is None:
@@ -54,7 +54,8 @@ async def dowith_ocr_request(image: Image.Image, prompt: str = None, request_id:
     print(f"[OCR Common] Request details - Image size: {image.size if image else 'Unknown'}, Prompt length: {len(prompt) if prompt else 0}")
 
     # Import ONLINE_OCR_MODE to determine processing mode
-    from server_config import ONLINE_OCR_MODE
+    from config_loader import SERVER_CONFIG
+    ONLINE_OCR_MODE = SERVER_CONFIG.online_ocr_mode
 
     try:
         # For online mode, we want to avoid multiple OCR calls
@@ -424,25 +425,25 @@ async def enhance_vl_output(text_content: str):
 
         # Initialize OpenAI client with separate LLM configuration
         client = AsyncOpenAI(
-            base_url=ENHANCEMENT_LLM_BASE_URL,
-            api_key=ENHANCEMENT_LLM_API_KEY or "sk-test"  # Use test key if none provided
+            base_url=SERVER_CONFIG.enhancement_llm_base_url,
+            api_key=SERVER_CONFIG.enhancement_llm_api_key or "sk-test"  # Use test key if none provided
         )
 
         # Prepare the request with code block formatting for better handling
         messages = [
             {
                 "role": "user",
-                "content": f"{VL_MODEL_ENHANCEMENT_PROMPT}\n\n```\n{text_content}\n```"
+                "content": f"{SERVER_CONFIG.vl_model_enhancement_prompt}\n\n```\n{text_content}\n```"
             }
         ]
 
         print(f"[VL Enhancement] Request messages prepared")
-        print(f"[VL Enhancement] Model: {ENHANCEMENT_LLM_MODEL_NAME}")
+        print(f"[VL Enhancement] Model: {SERVER_CONFIG.enhancement_llm_model_name}")
 
         # Make the API call using OpenAI client
-        print(f"[VL Enhancement] Making API call to {ENHANCEMENT_LLM_BASE_URL}")
+        print(f"[VL Enhancement] Making API call to {SERVER_CONFIG.enhancement_llm_base_url}")
         response = await client.chat.completions.create(
-            model=ENHANCEMENT_LLM_MODEL_NAME,
+            model=SERVER_CONFIG.enhancement_llm_model_name,
             messages=messages,
             max_tokens=4096  # Reduce max_tokens to a more reasonable value
         )
@@ -478,8 +479,8 @@ async def call_vl_model(image_base64: str):
 
         # Initialize OpenAI client
         client = AsyncOpenAI(
-            base_url=VL_MODEL_BASE_URL,
-            api_key=VL_MODEL_API_KEY or "sk-test"  # Use test key if none provided
+            base_url=SERVER_CONFIG.vl_model_base_url,
+            api_key=SERVER_CONFIG.vl_model_api_key or "sk-test"  # Use test key if none provided
         )
 
         # Prepare the request
@@ -489,7 +490,7 @@ async def call_vl_model(image_base64: str):
                 "content": [
                     {
                         "type": "text",
-                        "text": VL_MODEL_ANALYSIS_PROMPT
+                        "text": SERVER_CONFIG.vl_model_analysis_prompt
                     },
                     {
                         "type": "image_url",
@@ -502,12 +503,12 @@ async def call_vl_model(image_base64: str):
         ]
 
         print(f"[VL Analysis] Request messages prepared")
-        print(f"[VL Analysis] Model: {VL_MODEL_NAME}")
+        print(f"[VL Analysis] Model: {SERVER_CONFIG.vl_model_name}")
 
         # Make the API call using OpenAI client
-        print(f"[VL Analysis] Making API call to {VL_MODEL_BASE_URL}")
+        print(f"[VL Analysis] Making API call to {SERVER_CONFIG.vl_model_base_url}")
         response = await client.chat.completions.create(
-            model=VL_MODEL_NAME,
+            model=SERVER_CONFIG.vl_model_name,
             messages=messages,
             #max_tokens=16384
             max_tokens=8100

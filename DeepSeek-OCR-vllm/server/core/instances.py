@@ -6,11 +6,11 @@ to avoid circular imports.
 
 from .processor import OCRProcessor
 from .online_processor import OnlineOCRProcessor
-from server_config import ONLINE_OCR_MODE
+from config_loader import SERVER_CONFIG
 
 # Global processors
 offline_processor = OCRProcessor()
 online_processor = OnlineOCRProcessor()
 
 # Select processor based on configuration
-processor = online_processor if ONLINE_OCR_MODE else offline_processor
+processor = online_processor if SERVER_CONFIG.online_ocr_mode else offline_processor

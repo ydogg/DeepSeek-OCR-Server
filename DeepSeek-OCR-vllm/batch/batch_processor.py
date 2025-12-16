@@ -36,13 +36,18 @@ from common.image_processing import rematch_image, draw_bounding_boxes, process_
 from common.image_analysis import analyze_extracted_images_sync
 from common.config_utils import get_ocr_config, get_processing_config
 
-# Import batch-specific configuration
-from batch.config import (
-    get_batch_config, STAGE_OCR, STAGE_MD_IMAGE, STAGE_MD_TEXT, STAGE_MD_MERGED, STAGE_ALL,
-    VL_MODEL_BASE_URL, VL_MODEL_API_KEY, VL_MODEL_NAME, VL_MODEL_ANALYSIS_PROMPT,
-    ENHANCEMENT_LLM_BASE_URL, ENHANCEMENT_LLM_MODEL_NAME, ENHANCEMENT_LLM_API_KEY,
-    VL_MODEL_ENHANCEMENT_PROMPT, DEFAULT_OCR_PROMPT
-)
+# Import configurations
+from config_loader import BATCH_CONFIG, COMMON_CONFIG
+
+# Define constants directly from configuration
+STAGE_OCR = 'raw'
+STAGE_MD_IMAGE = 'md_image'
+STAGE_MD_TEXT = 'md_text'
+STAGE_MD_MERGED = 'md_merged'
+STAGE_ALL = 'all'
+
+# Default OCR prompt
+DEFAULT_OCR_PROMPT = COMMON_CONFIG.ocr_prompt
 
 # Import required modules for image analysis
 import base64
@@ -54,7 +59,7 @@ from openai import AsyncOpenAI
 
 class BatchProcessor:
     def __init__(self):
-        self.batch_config = get_batch_config()
+        self.batch_config = BATCH_CONFIG
         self.ocr_config = get_ocr_config()
         self.processing_config = get_processing_config()
 
