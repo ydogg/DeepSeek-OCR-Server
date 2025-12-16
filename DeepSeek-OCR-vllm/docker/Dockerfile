@@ -20,9 +20,11 @@ COPY server/requirements.txt /app/server/requirements.txt
 COPY gradio/requirements.txt /app/gradio/requirements.txt
 
 # Install Python dependencies for online OCR mode
-# Note: All dependencies are installed to ensure code compatibility,
-# but only necessary modules are loaded at runtime based on ONLINE_OCR_MODE configuration.
-# In online mode, heavy dependencies like transformers are not actually used.
+# TODO: Optimize dependencies based on ONLINE_OCR_MODE configuration
+# Currently installs all dependencies to ensure code compatibility,
+# but in online mode, heavy dependencies like transformers are not actually used.
+# Future optimization: Create separate requirements files for online/offline modes
+# to reduce Docker image size in online mode.
 RUN pip install -r /app/server/requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple --cert ./ZscalerRootCertificate.crt
 RUN pip install -r /app/gradio/requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple --cert ./ZscalerRootCertificate.crt
 
