@@ -60,7 +60,7 @@ deploy_to_k8s_push_mode_argocd:
     - cd ai-divination-manifests
     - sed -i -E "s@(^[[:space:]]*image:[[:space:]]+).*@\1${IMAGE_NAME}@" deploy/overlays/${CI_COMMIT_REF_NAME}/deployment-patch.yaml
     - cat deploy/overlays/${CI_COMMIT_REF_NAME}/deployment-patch.yaml
-    - git config user.email "wang-yg@nec.com"
+    - git config user.email "wang-yg@nec.cn"
     - git config user.name "Gitlab-CICD"
     - git add -u .
     - git status
