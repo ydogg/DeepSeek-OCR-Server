@@ -134,3 +134,8 @@ Thumbs.db
 QWEN.md
 ocr_request.json
 ocr_response.json
+# Test data
+test_data/
+
+# Backup files
+*.bak

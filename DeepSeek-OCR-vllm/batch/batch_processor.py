@@ -36,13 +36,18 @@ from common.image_processing import rematch_image, draw_bounding_boxes, process_
 from common.image_analysis import analyze_extracted_images_sync
 from common.config_utils import get_ocr_config, get_processing_config
 
-# Import batch-specific configuration
-from batch.config import (
-    get_batch_config, STAGE_OCR, STAGE_MD_IMAGE, STAGE_MD_TEXT, STAGE_MD_MERGED, STAGE_ALL,
-    VL_MODEL_BASE_URL, VL_MODEL_API_KEY, VL_MODEL_NAME, VL_MODEL_ANALYSIS_PROMPT,
-    ENHANCEMENT_LLM_BASE_URL, ENHANCEMENT_LLM_MODEL_NAME, ENHANCEMENT_LLM_API_KEY,
-    VL_MODEL_ENHANCEMENT_PROMPT, DEFAULT_OCR_PROMPT
-)
+# Import configurations
+from config_loader import BATCH_CONFIG, COMMON_CONFIG
+
+# Define constants directly from configuration
+STAGE_OCR = 'raw'
+STAGE_MD_IMAGE = 'md_image'
+STAGE_MD_TEXT = 'md_text'
+STAGE_MD_MERGED = 'md_merged'
+STAGE_ALL = 'all'
+
+# Default OCR prompt
+DEFAULT_OCR_PROMPT = COMMON_CONFIG.ocr_prompt
 
 # Import required modules for image analysis
 import base64
@@ -54,15 +59,16 @@ from openai import AsyncOpenAI
 
 class BatchProcessor:
     def __init__(self):
-        self.batch_config = get_batch_config()
+        self.batch_config = BATCH_CONFIG
         self.ocr_config = get_ocr_config()
         self.processing_config = get_processing_config()
-
-        # Initialize vLLM engine for OCR processing
-        self._initialize_vllm_engine()
+        self.llm = None  # 延迟初始化
 
     def _initialize_vllm_engine(self):
         """Initialize vLLM engine for batch OCR processing"""
+        if self.llm is not None:
+            return  # 已经初始化
+
         try:
             print(f"Initializing model with path: {self.ocr_config['model_path']}")
             ModelRegistry.register_model("DeepseekOCRForCausalLM", DeepseekOCRForCausalLM)
@@ -96,11 +102,35 @@ class BatchProcessor:
             print("LLM engine initialized successfully")
         except Exception as e:
             print(f"Failed to initialize model: {e}")
+            self.llm = None
             raise
+
+    def cleanup_vllm_engine(self):
+        """Clean up vLLM engine and release GPU resources"""
+        if self.llm is not None:
+            print("Cleaning up vLLM engine...")
+
+            # 显式删除LLM实例
+            del self.llm
+            self.llm = None
+
+            # 强制清理GPU内存缓存
+            try:
+                import torch
+                # 同步确保所有GPU操作完成
+                torch.cuda.synchronize()
+                # 释放缓存的GPU内存
+                torch.cuda.empty_cache()
+                print("GPU memory cache cleared")
+            except Exception as e:
+                print(f"Warning: Failed to clear CUDA cache: {e}")
 
     def process_ocr_batch(self, image_paths):
         """First stage: OCR batch processing using vLLM"""
         print(f"Processing OCR for {len(image_paths)} images...")
+
+        # 初始化vLLM引擎（如果尚未初始化）
+        self._initialize_vllm_engine()
 
         # Load images
         images = []
@@ -132,6 +162,9 @@ class BatchProcessor:
         raw_results = []
         for output in outputs_list:
             raw_results.append(output.outputs[0].text)
+
+        # 处理完成后立即清理资源
+        self.cleanup_vllm_engine()
 
         return raw_results
 

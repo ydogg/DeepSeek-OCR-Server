@@ -4,7 +4,8 @@ import io
 from PIL import Image
 
 from server.schemas.models import OCRRequest
-from server.config import ONLINE_OCR_BASE_URL, ONLINE_OCR_MODEL_NAME, ONLINE_OCR_API_KEY, OCR_PROMPT
+from config_loader import SERVER_CONFIG, COMMON_CONFIG
+from server.core.utils import image_to_base64
 
 # Use OpenAI client for online OCR
 from openai import OpenAI
@@ -13,10 +14,10 @@ from openai import OpenAI
 class OnlineOCRProcessor:
     def __init__(self):
         self.client = OpenAI(
-            base_url=ONLINE_OCR_BASE_URL,
-            api_key=ONLINE_OCR_API_KEY or "sk-test"  # Use test key if none provided
+            base_url=SERVER_CONFIG.online_ocr_base_url,
+            api_key=SERVER_CONFIG.online_ocr_api_key or "sk-test"  # Use test key if none provided
         )
-        self.model_name = ONLINE_OCR_MODEL_NAME
+        self.model_name = SERVER_CONFIG.online_ocr_model_name
 
     def start_workers(self):
         """Initialize online OCR processor (no workers needed)"""
@@ -31,20 +32,13 @@ class OnlineOCRProcessor:
         # For online mode, processing is synchronous, so this is just a placeholder
         pass
 
-    def image_to_base64(self, image: Image.Image) -> str:
-        """Convert PIL Image to base64 string"""
-        buffered = io.BytesIO()
-        image.save(buffered, format="JPEG")
-        img_str = base64.b64encode(buffered.getvalue()).decode()
-        return img_str
-
+    
     def submit_request(self, ocr_request: OCRRequest):
         """Submit a request and process it directly using OpenAI client"""
         # For online mode, processing happens directly
 
         # Use default prompt from config if none provided
-        from server.config import OCR_PROMPT
-        prompt = ocr_request.prompt if ocr_request.prompt is not None else OCR_PROMPT
+        prompt = ocr_request.prompt if ocr_request.prompt is not None else COMMON_CONFIG.ocr_prompt
         #print(f"[Online OCR] Using prompt: {repr(prompt)}")
 
         try:
@@ -86,7 +80,7 @@ class OnlineOCRProcessor:
         """
         try:
             # Convert image to base64
-            image_base64 = self.image_to_base64(image)
+            image_base64 = image_to_base64(image)
             
             # Prepare the request
             messages = [

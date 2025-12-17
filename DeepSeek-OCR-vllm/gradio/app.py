@@ -15,17 +15,11 @@ import io
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Import configuration
-from server.config import DEFAULT_OCR_PROMPT, ADDRESS, PORT
+from config_loader import SERVER_CONFIG, COMMON_CONFIG
+from server.core.utils import image_to_base64
 
 # Server configuration
-SERVER_URL = f"http://{ADDRESS}:{PORT}/v1/ocr"
-
-def image_to_base64(image: Image.Image) -> str:
-    """Convert PIL Image to base64 string"""
-    buffered = io.BytesIO()
-    image.save(buffered, format="JPEG")
-    img_str = base64.b64encode(buffered.getvalue()).decode()
-    return img_str
+SERVER_URL = f"http://{SERVER_CONFIG.address}:{SERVER_CONFIG.port}/v1/ocr"
 
 def ocr_with_deepseek(image: Image.Image, prompt: str, level: str) -> tuple[str, str]:
     """
@@ -92,7 +86,7 @@ with gr.Blocks(title="NECJN Document->MarkDown Service UI") as demo:
             image_input = gr.Image(type="pil", label="Upload Image")
             prompt_input = gr.Textbox(
                 label="OCR Prompt",
-                value=DEFAULT_OCR_PROMPT,
+                value=COMMON_CONFIG.ocr_prompt,
                 lines=3,
                 placeholder="Enter OCR prompt (optional)"
             )

@@ -6,7 +6,15 @@ import torchvision.transforms as T
 from PIL import Image, ImageOps
 from transformers import AutoProcessor, BatchFeature, LlamaTokenizerFast
 from transformers.processing_utils import ProcessorMixin
-from config import IMAGE_SIZE, BASE_SIZE, CROP_MODE, MIN_CROPS, MAX_CROPS, OCR_PROMPT, TOKENIZER
+from config_loader import COMMON_CONFIG
+from tokenizer_config import TOKENIZER
+
+IMAGE_SIZE = COMMON_CONFIG.image_size
+BASE_SIZE = COMMON_CONFIG.base_size
+CROP_MODE = COMMON_CONFIG.crop_mode
+MIN_CROPS = COMMON_CONFIG.min_crops
+MAX_CROPS = COMMON_CONFIG.max_crops
+OCR_PROMPT = COMMON_CONFIG.ocr_prompt
 
 def find_closest_aspect_ratio(aspect_ratio, target_ratios, width, height, image_size):
     best_ratio_diff = float('inf')
