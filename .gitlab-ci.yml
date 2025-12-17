@@ -10,7 +10,7 @@ build_image_job:
     entrypoint: [""]
   script:
     # 增加创建时戳
-    - TS=$(date +"%Y/%m/%d %X")
+    - TS=$(date +"%Y%m%d%X")
     - echo "$TS -> ${CI_PROJECT_NAME}"
 
     # 制作镜像
