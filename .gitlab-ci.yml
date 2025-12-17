@@ -19,7 +19,7 @@ build_image_job:
     - echo "IMAGE_NAME=$IMAGE_NAME" >> variables.env
     - /kaniko/executor
       --skip-tls-verify
-      --context "${CI_PROJECT_DIR}"
+      --context "${CI_PROJECT_DIR}/DeepSeek-OCR-vllm"
       --dockerfile "${CI_PROJECT_DIR}/docker/Dockerfile.offline"
       --destination "$IMAGE_NAME"
   artifacts:
