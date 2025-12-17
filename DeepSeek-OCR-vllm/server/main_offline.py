@@ -7,17 +7,12 @@ including heavy dependencies like transformers and torch.
 
 import os
 import sys
-import uuid
 import base64
-import datetime
-import io
 from contextlib import asynccontextmanager
 from typing import List
 from PIL import Image
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form
-from fastapi.responses import JSONResponse, FileResponse
-from pydantic import BaseModel
-from typing import Optional
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import JSONResponse
 
 # Add parent directory to path to import modules
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
