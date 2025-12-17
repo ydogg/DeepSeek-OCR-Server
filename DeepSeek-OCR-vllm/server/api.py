@@ -654,8 +654,7 @@ async def ocr_endpoint(request: OCRImageRequest, processor=None):
 
         # Decode base64 image
         print("[OCR Main] Decoding base64 image")
-        image_data = base64.b64decode(request.image)
-        img = Image.open(io.BytesIO(image_data)).convert('RGB')
+        img = load_image_from_base64(request.image)
         print(f"[OCR Main] Image decoded, size: {img.size if img else 'Unknown'}")
 
         # Use provided prompt or default from config

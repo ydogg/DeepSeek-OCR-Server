@@ -16,16 +16,10 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Import configuration
 from config_loader import SERVER_CONFIG, COMMON_CONFIG
+from server.core.utils import image_to_base64
 
 # Server configuration
 SERVER_URL = f"http://{SERVER_CONFIG.address}:{SERVER_CONFIG.port}/v1/ocr"
-
-def image_to_base64(image: Image.Image) -> str:
-    """Convert PIL Image to base64 string"""
-    buffered = io.BytesIO()
-    image.save(buffered, format="JPEG")
-    img_str = base64.b64encode(buffered.getvalue()).decode()
-    return img_str
 
 def ocr_with_deepseek(image: Image.Image, prompt: str, level: str) -> tuple[str, str]:
     """
