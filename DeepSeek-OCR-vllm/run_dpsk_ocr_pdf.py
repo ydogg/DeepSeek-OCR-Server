@@ -14,7 +14,8 @@ os.environ['VLLM_USE_V1'] = '0'
 os.environ["CUDA_VISIBLE_DEVICES"] = '0'
 
 
-from config import OCR_MODEL_PATH, INPUT_PATH, OUTPUT_PATH, OCR_PROMPT, SKIP_REPEAT, MAX_CONCURRENCY, NUM_WORKERS, CROP_MODE
+from config_loader import COMMON_CONFIG
+
 
 from PIL import Image, ImageDraw, ImageFont
 import numpy as np
@@ -37,7 +38,7 @@ llm = LLM(
     trust_remote_code=True, 
     max_model_len=8192,
     swap_space=0,
-    max_num_seqs=MAX_CONCURRENCY,
+    max_num_seqs=COMMON_CONFIG.max_concurrency,
     tensor_parallel_size=1,
     gpu_memory_utilization=0.9,
     disable_mm_preprocessor_cache=True
@@ -183,7 +184,7 @@ def draw_bounding_boxes(image, refs, jdx):
                     if label_type == 'image':
                         try:
                             cropped = image.crop((x1, y1, x2, y2))
-                            cropped.save(f"{OUTPUT_PATH}/images/{jdx}_{img_idx}.jpg")
+                            cropped.save(f"{COMMON_CONFIG.output_path}/images/{jdx}_{img_idx}.jpg")
                         except Exception as e:
                             print(e)
                             pass
@@ -225,27 +226,27 @@ def process_single_image(image):
     prompt_in = prompt
     cache_item = {
         "prompt": prompt_in,
-        "multi_modal_data": {"image": DeepseekOCRProcessor().tokenize_with_images(images = [image], bos=True, eos=True, cropping=CROP_MODE)},
+        "multi_modal_data": {"image": DeepseekOCRProcessor().tokenize_with_images(images = [image], bos=True, eos=True, cropping=COMMON_CONFIG.crop_mode)},
     }
     return cache_item
 
 
 if __name__ == "__main__":
 
-    os.makedirs(OUTPUT_PATH, exist_ok=True)
-    os.makedirs(f'{OUTPUT_PATH}/images', exist_ok=True)
+    os.makedirs(COMMON_CONFIG.output_path, exist_ok=True)
+    os.makedirs(f'{COMMON_CONFIG.output_path}/images', exist_ok=True)
     
     print(f'{Colors.RED}PDF loading .....{Colors.RESET}')
 
 
-    images = pdf_to_images_high_quality(INPUT_PATH)
+    images = pdf_to_images_high_quality(COMMON_CONFIG.input_path)
 
 
-    prompt = OCR_PROMPT
+    prompt = COMMON_CONFIG.ocr_prompt
 
     # batch_inputs = []
 
-    with ThreadPoolExecutor(max_workers=NUM_WORKERS) as executor:  
+    with ThreadPoolExecutor(max_workers=COMMON_CONFIG.num_workers) as executor:  
         batch_inputs = list(tqdm(
             executor.map(process_single_image, images),
             total=len(images),
@@ -259,7 +260,7 @@ if __name__ == "__main__":
     #     cache_list = [
     #         {
     #             "prompt": prompt_in,
-    #             "multi_modal_data": {"image": DeepseekOCRProcessor().tokenize_with_images(images = [image], bos=True, eos=True, cropping=CROP_MODE)},
+    #             "multi_modal_data": {"image": DeepseekOCRProcessor().tokenize_with_images(images = [image], bos=True, eos=True, cropping=COMMON_CONFIG.crop_mode)},
     #         }
     #     ]
     #     batch_inputs.extend(cache_list)
@@ -271,14 +272,14 @@ if __name__ == "__main__":
     )
 
 
-    output_path = OUTPUT_PATH
+    output_path = COMMON_CONFIG.output_path
 
     os.makedirs(output_path, exist_ok=True)
 
 
-    mmd_det_path = output_path + '/' + INPUT_PATH.split('/')[-1].replace('.pdf', '_det.md')
-    mmd_path = output_path + '/' + INPUT_PATH.split('/')[-1].replace('pdf', 'mmd')
-    pdf_out_path = output_path + '/' + INPUT_PATH.split('/')[-1].replace('.pdf', '_layouts.pdf')
+    mmd_det_path = output_path + '/' + COMMON_CONFIG.input_path.split('/')[-1].replace('.pdf', '_det.md')
+    mmd_path = output_path + '/' + COMMON_CONFIG.input_path.split('/')[-1].replace('pdf', 'mmd')
+    pdf_out_path = output_path + '/' + COMMON_CONFIG.input_path.split('/')[-1].replace('.pdf', '_layouts.pdf')
     contents_det = ''
     contents = ''
     draw_images = []
@@ -289,7 +290,7 @@ if __name__ == "__main__":
         if '<｜end▁of▁sentence｜>' in content: # repeat no eos
             content = content.replace('<｜end▁of▁sentence｜>', '')
         else:
-            if SKIP_REPEAT:
+            if COMMON_CONFIG.skip_repeat:
                 continue
 
         

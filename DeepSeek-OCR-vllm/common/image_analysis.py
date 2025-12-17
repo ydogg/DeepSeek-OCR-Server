@@ -6,14 +6,14 @@ Shared between server and batch implementations
 import os
 import base64
 import asyncio
+import io
 from openai import AsyncOpenAI
+from PIL import Image
 
 # Import configuration
-from batch.config import (
-    VL_MODEL_BASE_URL, VL_MODEL_API_KEY, VL_MODEL_NAME, VL_MODEL_ANALYSIS_PROMPT,
-    ENHANCEMENT_LLM_BASE_URL, ENHANCEMENT_LLM_MODEL_NAME, ENHANCEMENT_LLM_API_KEY,
-    VL_MODEL_ENHANCEMENT_PROMPT
-)
+from config_loader import BATCH_CONFIG
+
+
 
 
 def analyze_extracted_images_sync(ocr_result: str, request_id_with_timestamp: str, request_output_path: str):
@@ -183,27 +183,27 @@ def enhance_vl_output_sync(text_content: str):
 
         # Make the API call using OpenAI client (synchronous version)
         import openai
-        print(f"[VL Enhancement] Making API call to {ENHANCEMENT_LLM_BASE_URL}")
+        print(f"[VL Enhancement] Making API call to {BATCH_CONFIG.enhancement_llm_base_url}")
 
         # Use synchronous client instead of async
         sync_client = openai.OpenAI(
-            base_url=ENHANCEMENT_LLM_BASE_URL,
-            api_key=ENHANCEMENT_LLM_API_KEY or "sk-test"
+            base_url=BATCH_CONFIG.enhancement_llm_base_url,
+            api_key=BATCH_CONFIG.enhancement_llm_api_key
         )
 
         # Prepare the request with code block formatting for better handling
         messages = [
             {
                 "role": "user",
-                "content": f"{VL_MODEL_ENHANCEMENT_PROMPT}\n\n```\n{text_content}\n```"
+                "content": f"{BATCH_CONFIG.vl_model_enhancement_prompt}\n\n```\n{text_content}\n```"
             }
         ]
 
         print(f"[VL Enhancement] Request messages prepared")
-        print(f"[VL Enhancement] Model: {ENHANCEMENT_LLM_MODEL_NAME}")
+        print(f"[VL Enhancement] Model: {BATCH_CONFIG.enhancement_llm_model_name}")
 
         response = sync_client.chat.completions.create(
-            model=ENHANCEMENT_LLM_MODEL_NAME,
+            model=BATCH_CONFIG.enhancement_llm_model_name,
             messages=messages,
             max_tokens=4096
         )
@@ -236,25 +236,25 @@ async def enhance_vl_output(text_content: str):
 
         # Initialize OpenAI client with separate LLM configuration
         client = AsyncOpenAI(
-            base_url=ENHANCEMENT_LLM_BASE_URL,
-            api_key=ENHANCEMENT_LLM_API_KEY or "sk-test"  # Use test key if none provided
+            base_url=BATCH_CONFIG.enhancement_llm_base_url,
+            api_key=BATCH_CONFIG.enhancement_llm_api_key
         )
 
         # Prepare the request with code block formatting for better handling
         messages = [
             {
                 "role": "user",
-                "content": f"{VL_MODEL_ENHANCEMENT_PROMPT}\n\n```\n{text_content}\n```"
+                "content": f"{BATCH_CONFIG.vl_model_enhancement_prompt}\n\n```\n{text_content}\n```"
             }
         ]
 
         print(f"[VL Enhancement] Request messages prepared")
-        print(f"[VL Enhancement] Model: {ENHANCEMENT_LLM_MODEL_NAME}")
+        print(f"[VL Enhancement] Model: {BATCH_CONFIG.enhancement_llm_model_name}")
 
         # Make the API call using OpenAI client
-        print(f"[VL Enhancement] Making API call to {ENHANCEMENT_LLM_BASE_URL}")
+        print(f"[VL Enhancement] Making API call to {BATCH_CONFIG.enhancement_llm_base_url}")
         response = await client.chat.completions.create(
-            model=ENHANCEMENT_LLM_MODEL_NAME,
+            model=BATCH_CONFIG.enhancement_llm_model_name,
             messages=messages,
             max_tokens=4096
         )
@@ -288,8 +288,8 @@ def call_vl_model_sync(image_base64: str):
         # Initialize OpenAI client
         import openai
         client = openai.OpenAI(
-            base_url=VL_MODEL_BASE_URL,
-            api_key=VL_MODEL_API_KEY or "sk-test"  # Use test key if none provided
+            base_url=BATCH_CONFIG.vl_model_base_url,
+            api_key=BATCH_CONFIG.vl_model_api_key
         )
 
         # Prepare the request
@@ -299,7 +299,7 @@ def call_vl_model_sync(image_base64: str):
                 "content": [
                     {
                         "type": "text",
-                        "text": VL_MODEL_ANALYSIS_PROMPT
+                        "text": BATCH_CONFIG.vl_model_analysis_prompt
                     },
                     {
                         "type": "image_url",
@@ -312,12 +312,12 @@ def call_vl_model_sync(image_base64: str):
         ]
 
         print(f"[VL Analysis] Request messages prepared")
-        print(f"[VL Analysis] Model: {VL_MODEL_NAME}")
+        print(f"[VL Analysis] Model: {BATCH_CONFIG.vl_model_name}")
 
         # Make the API call using OpenAI client (synchronous version)
-        print(f"[VL Analysis] Making API call to {VL_MODEL_BASE_URL}")
+        print(f"[VL Analysis] Making API call to {BATCH_CONFIG.vl_model_base_url}")
         response = client.chat.completions.create(
-            model=VL_MODEL_NAME,
+            model=BATCH_CONFIG.vl_model_name,
             messages=messages,
             max_tokens=16384
         )
@@ -347,8 +347,8 @@ async def call_vl_model(image_base64: str):
 
         # Initialize OpenAI client
         client = AsyncOpenAI(
-            base_url=VL_MODEL_BASE_URL,
-            api_key=VL_MODEL_API_KEY or "sk-test"  # Use test key if none provided
+            base_url=BATCH_CONFIG.vl_model_base_url,
+            api_key=BATCH_CONFIG.vl_model_api_key
         )
 
         # Prepare the request
@@ -358,7 +358,7 @@ async def call_vl_model(image_base64: str):
                 "content": [
                     {
                         "type": "text",
-                        "text": VL_MODEL_ANALYSIS_PROMPT
+                        "text": BATCH_CONFIG.vl_model_analysis_prompt
                     },
                     {
                         "type": "image_url",
@@ -371,12 +371,12 @@ async def call_vl_model(image_base64: str):
         ]
 
         print(f"[VL Analysis] Request messages prepared")
-        print(f"[VL Analysis] Model: {VL_MODEL_NAME}")
+        print(f"[VL Analysis] Model: {BATCH_CONFIG.vl_model_name}")
 
         # Make the API call using OpenAI client
-        print(f"[VL Analysis] Making API call to {VL_MODEL_BASE_URL}")
+        print(f"[VL Analysis] Making API call to {BATCH_CONFIG.vl_model_base_url}")
         response = await client.chat.completions.create(
-            model=VL_MODEL_NAME,
+            model=BATCH_CONFIG.vl_model_name,
             messages=messages,
             max_tokens=16384
         )

@@ -7,18 +7,27 @@ import os
 import re
 import uuid
 import base64
+import io
 import datetime
 from typing import Optional
 from PIL import Image, ImageDraw, ImageFont
 import numpy as np
 
 from server.schemas.models import OCRRequest
-from server.core.utils import clean_ref_tags
+from server.core.utils import clean_ref_tags, load_image_from_base64
 from common.text_processing import convert_image_tags_to_md
-from server.config import VL_MODEL_BASE_URL, VL_MODEL_API_KEY, VL_MODEL_NAME, VL_MODEL_ANALYSIS_PROMPT, ENHANCEMENT_LLM_BASE_URL, ENHANCEMENT_LLM_MODEL_NAME, ENHANCEMENT_LLM_API_KEY, VL_MODEL_ENHANCEMENT_PROMPT, DEFAULT_OCR_PROMPT
+from config_loader import SERVER_CONFIG, COMMON_CONFIG
 
 # Import processor from instances module to use the same instance
-from server.core.instances import processor
+# Note: This import is deprecated, use processor parameter in functions instead
+# This is kept for backward compatibility with existing code
+try:
+    from server.core.instances import online_processor as processor
+except ImportError:
+    try:
+        from server.core.instances import offline_processor as processor
+    except ImportError:
+        processor = None
 
 # Import shared functions from common module
 from common.image_processing import (
@@ -28,33 +37,36 @@ from common.image_processing import (
 from common.text_processing import re_match
 
 
-async def dowith_ocr_request(image: Image.Image, prompt: str = None, request_id: str = None, level: str = "md_text") -> dict:
+async def dowith_ocr_request(image: Image.Image, prompt: str = None, request_id: str = None, level: str = "md_text", processor=None) -> dict:
     """
     Common OCR processing method that works with both online and offline processors.
     Handles all levels of processing: raw, md_image, md_text, and md_merged.
 
     Args:
         image: PIL Image to process
-        prompt: OCR prompt to use (defaults to DEFAULT_OCR_PROMPT if None)
+        prompt: OCR prompt to use (defaults to OCR_PROMPT if None)
         request_id: Request ID (generates new one if None)
         level: Processing level - "raw", "md_image", "md_text", or "md_merged"
+        processor: Processor instance to use (defaults to global processor if None)
 
     Returns:
         dict: OCR result with status and result/error
     """
     # Use provided prompt or default from config
     if prompt is None:
-        prompt = DEFAULT_OCR_PROMPT
+        prompt = COMMON_CONFIG.ocr_prompt
 
     # Generate request ID if not provided
     if request_id is None:
         request_id = f"req-{uuid.uuid4().hex[:12]}"
 
+    # Use provided processor or fall back to global processor
+    if processor is None:
+        from server.core.instances import processor as global_processor
+        processor = global_processor
+
     print(f"[OCR Common] Processing OCR request with ID: {request_id}, level: {level}")
     print(f"[OCR Common] Request details - Image size: {image.size if image else 'Unknown'}, Prompt length: {len(prompt) if prompt else 0}")
-
-    # Import ONLINE_OCR_MODE to determine processing mode
-    from server.config import ONLINE_OCR_MODE
 
     try:
         # For online mode, we want to avoid multiple OCR calls
@@ -424,25 +436,25 @@ async def enhance_vl_output(text_content: str):
 
         # Initialize OpenAI client with separate LLM configuration
         client = AsyncOpenAI(
-            base_url=ENHANCEMENT_LLM_BASE_URL,
-            api_key=ENHANCEMENT_LLM_API_KEY or "sk-test"  # Use test key if none provided
+            base_url=SERVER_CONFIG.enhancement_llm_base_url,
+            api_key=SERVER_CONFIG.enhancement_llm_api_key or "sk-test"  # Use test key if none provided
         )
 
         # Prepare the request with code block formatting for better handling
         messages = [
             {
                 "role": "user",
-                "content": f"{VL_MODEL_ENHANCEMENT_PROMPT}\n\n```\n{text_content}\n```"
+                "content": f"{SERVER_CONFIG.vl_model_enhancement_prompt}\n\n```\n{text_content}\n```"
             }
         ]
 
         print(f"[VL Enhancement] Request messages prepared")
-        print(f"[VL Enhancement] Model: {ENHANCEMENT_LLM_MODEL_NAME}")
+        print(f"[VL Enhancement] Model: {SERVER_CONFIG.enhancement_llm_model_name}")
 
         # Make the API call using OpenAI client
-        print(f"[VL Enhancement] Making API call to {ENHANCEMENT_LLM_BASE_URL}")
+        print(f"[VL Enhancement] Making API call to {SERVER_CONFIG.enhancement_llm_base_url}")
         response = await client.chat.completions.create(
-            model=ENHANCEMENT_LLM_MODEL_NAME,
+            model=SERVER_CONFIG.enhancement_llm_model_name,
             messages=messages,
             max_tokens=4096  # Reduce max_tokens to a more reasonable value
         )
@@ -478,8 +490,8 @@ async def call_vl_model(image_base64: str):
 
         # Initialize OpenAI client
         client = AsyncOpenAI(
-            base_url=VL_MODEL_BASE_URL,
-            api_key=VL_MODEL_API_KEY or "sk-test"  # Use test key if none provided
+            base_url=SERVER_CONFIG.vl_model_base_url,
+            api_key=SERVER_CONFIG.vl_model_api_key or "sk-test"  # Use test key if none provided
         )
 
         # Prepare the request
@@ -489,7 +501,7 @@ async def call_vl_model(image_base64: str):
                 "content": [
                     {
                         "type": "text",
-                        "text": VL_MODEL_ANALYSIS_PROMPT
+                        "text": SERVER_CONFIG.vl_model_analysis_prompt
                     },
                     {
                         "type": "image_url",
@@ -502,14 +514,15 @@ async def call_vl_model(image_base64: str):
         ]
 
         print(f"[VL Analysis] Request messages prepared")
-        print(f"[VL Analysis] Model: {VL_MODEL_NAME}")
+        print(f"[VL Analysis] Model: {SERVER_CONFIG.vl_model_name}")
 
         # Make the API call using OpenAI client
-        print(f"[VL Analysis] Making API call to {VL_MODEL_BASE_URL}")
+        print(f"[VL Analysis] Making API call to {SERVER_CONFIG.vl_model_base_url}")
         response = await client.chat.completions.create(
-            model=VL_MODEL_NAME,
+            model=SERVER_CONFIG.vl_model_name,
             messages=messages,
-            max_tokens=16384
+            #max_tokens=16384
+            max_tokens=8100
         )
 
         print(f"[VL Analysis] API call completed successfully")
@@ -526,4 +539,170 @@ async def call_vl_model(image_base64: str):
     except Exception as e:
         print(f"[VL Analysis] Exception in call_vl_model: {str(e)}")
         return "Image analysis failed"
+
+
+# API endpoint functions (moved from main.py)
+import time
+from fastapi import HTTPException
+from fastapi.responses import JSONResponse
+from server.schemas.models import (
+    ChatMessage,
+    ChatCompletionRequest,
+    ChatCompletionResponseChoice,
+    ChatCompletionResponse,
+    OCRImageRequest
+)
+from server.core.utils import clean_ref_tags
+from config_loader import COMMON_CONFIG
+
+# Note: These functions are designed to be registered as routes in the main entry point files
+# They should not use @app decorators directly to avoid circular imports
+
+async def chat_completions(request: ChatCompletionRequest, processor=None):
+    """OpenAI compatible chat completion endpoint"""
+    print("[OCR Main] Received OpenAI compatible chat completion request")
+    print("[OCR Main] Request details - OpenAI compatible endpoint")
+
+    # Use provided processor or fall back to global processor
+    if processor is None:
+        from server.core.instances import processor as global_processor
+        processor = global_processor
+
+    # Extract image from messages (assuming it's in the first user message)
+    image_data = None
+    text_prompt = None
+
+    for message in request.messages:
+        if message.role == "user":
+            # New format: content is an array of objects
+            for item in message.content:
+                if item.type == "image_url":
+                    url = item.image_url.url
+                    if url.startswith("data:image/"):
+                        # Extract base64 image data
+                        start = url.find("base64,") + 7
+                        image_data = url[start:]
+                        print("[OCR Main] Found base64 image data in request")
+                elif item.type == "text":
+                    text_prompt = item.text
+
+    if image_data is None:
+        print("[OCR Main] No image data found in request")
+        raise HTTPException(status_code=400, detail="No image data found in request")
+
+    # Use provided text prompt or default from config
+    prompt = text_prompt if text_prompt is not None else COMMON_CONFIG.ocr_prompt
+    print(f"[OCR Main] Using prompt length: {len(prompt) if prompt else 0}")
+
+    try:
+        # Load image
+        print("[OCR Main] Loading image from base64 data")
+        image = load_image_from_base64(image_data)
+        print(f"[OCR Main] Image loaded, size: {image.size if image else 'Unknown'}")
+
+        # Process OCR using common method with raw level (no additional processing)
+        request_id = f"req-{uuid.uuid4().hex[:12]}"
+        print(f"[OCR Main] Processing request ID: {request_id} with level: raw (OpenAI compatible)")
+        result = await dowith_ocr_request(image, prompt, request_id, "raw", processor)
+
+        if result["status"] == "error":
+            print(f"[OCR Main] OCR processing failed: {result['error']}")
+            raise HTTPException(status_code=500, detail=f"Error processing image: {result['error']}")
+
+        # Clean ref and det tags (always for OpenAI compatible endpoint)
+        final_result = result["result"]
+        final_result = clean_ref_tags(final_result)
+        print(f"[OCR Main] OCR processing completed, cleaned result length: {len(final_result)}")
+
+        # Create response
+        choice = ChatCompletionResponseChoice(
+            index=0,
+            message=ChatMessage(role="assistant", content=str(final_result)),
+            finish_reason="stop"
+        )
+
+        response = ChatCompletionResponse(
+            id=f"chatcmpl-{uuid.uuid4().hex[:12]}",
+            created=int(time.time()),
+            model=request.model,
+            choices=[choice]
+        )
+        print(f"[OCR Main] Returning OpenAI compatible response")
+        return response
+    except Exception as e:
+        print(f"[OCR Main] Exception in OpenAI compatible endpoint: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error processing image: {str(e)}")
+
+
+async def ocr_endpoint(request: OCRImageRequest, processor=None):
+    """
+    Unified OCR endpoint that accepts base64 encoded image in JSON format.
+    All features can be enabled through request parameters:
+    - Basic OCR: Always enabled
+    - Result level: level="raw", "md_image", "md_text" (default), or "md_merged"
+
+    Temporary files are stored with timestamp format: /tmp/ocr_YYYYMMDDHHMMSS_req-xxxxxxxxxxxx/
+"""
+    try:
+        print(f"[OCR Main] Received OCR request with level: {request.level}")
+        print(f"[OCR Main] Request details - Level: {request.level}, Prompt provided: {request.prompt is not None}")
+
+        # Use provided processor or fall back to global processor
+        if processor is None:
+            from server.core.instances import processor as global_processor
+            processor = global_processor
+
+        # Decode base64 image
+        print("[OCR Main] Decoding base64 image")
+        img = load_image_from_base64(request.image)
+        print(f"[OCR Main] Image decoded, size: {img.size if img else 'Unknown'}")
+
+        # Use provided prompt or default from config
+        prompt = request.prompt if request.prompt is not None else COMMON_CONFIG.ocr_prompt
+        print(f"[OCR Main] Using prompt length: {len(prompt) if prompt else 0}")
+
+        # Process OCR using common method with specified level
+        request_id = f"req-{uuid.uuid4().hex[:12]}"
+        print(f"[OCR Main] Processing request ID: {request_id} with level: {request.level}")
+        result = await dowith_ocr_request(img, prompt, request_id, request.level, processor)
+
+        if result["status"] == "error":
+            print(f"[OCR Main] OCR processing failed: {result['error']}")
+            raise HTTPException(status_code=500, detail=f"Error processing image: {result['error']}")
+
+        response_data = {
+            "result": result["result"],
+            "request_id": request_id
+        }
+        print(f"[OCR Main] Returning response with result length: {len(result['result'])}")
+        return JSONResponse(content=response_data)
+    except Exception as e:
+        print(f"[OCR Main] Exception in OCR processing: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error processing image: {str(e)}")
+
+
+async def health_check(processor=None):
+    """Health check endpoint"""
+    # Use provided processor or fall back to global processor
+    if processor is None:
+        from server.core.instances import processor as global_processor
+        processor = global_processor
+
+    is_healthy = processor.health_check()
+
+    # Check if processor has workers (offline mode) or not (online mode)
+    if hasattr(processor, 'workers'):
+        workers_status = [worker.is_alive() for worker in processor.workers]
+        return {
+            "status": "healthy" if is_healthy else "unhealthy",
+            "workers": len(processor.workers),
+            "workers_status": workers_status
+        }
+    else:
+        # Online mode - no workers
+        return {
+            "status": "healthy" if is_healthy else "unhealthy",
+            "workers": 0,
+            "workers_status": []
+        }
 

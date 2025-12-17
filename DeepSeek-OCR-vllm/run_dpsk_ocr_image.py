@@ -19,7 +19,8 @@ import numpy as np
 from tqdm import tqdm
 from process.ngram_norepeat import NoRepeatNGramLogitsProcessor
 from process.image_process import DeepseekOCRProcessor
-from config import OCR_MODEL_PATH, INPUT_PATH, OUTPUT_PATH, OCR_PROMPT, CROP_MODE
+from config_loader import COMMON_CONFIG
+
 
 
 
@@ -111,7 +112,7 @@ def draw_bounding_boxes(image, refs):
                     if label_type == 'image':
                         try:
                             cropped = image.crop((x1, y1, x2, y2))
-                            cropped.save(f"{OUTPUT_PATH}/images/{img_idx}.jpg")
+                            cropped.save(f"{COMMON_CONFIG.output_path}/images/{img_idx}.jpg")
                         except Exception as e:
                             print(e)
                             pass
@@ -154,7 +155,7 @@ async def stream_generate(image=None, prompt=''):
 
 
     engine_args = AsyncEngineArgs(
-        model=OCR_MODEL_PATH,
+        model=COMMON_CONFIG.ocr_model_path,
         hf_overrides={"architectures": ["DeepseekOCRForCausalLM"]},
         block_size=256,
         max_model_len=8192,
@@ -209,19 +210,19 @@ async def stream_generate(image=None, prompt=''):
 
 if __name__ == "__main__":
 
-    os.makedirs(OUTPUT_PATH, exist_ok=True)
-    os.makedirs(f'{OUTPUT_PATH}/images', exist_ok=True)
+    os.makedirs(COMMON_CONFIG.output_path, exist_ok=True)
+    os.makedirs(f'{COMMON_CONFIG.output_path}/images', exist_ok=True)
 
-    image = load_image(INPUT_PATH).convert('RGB')
+    image = load_image(COMMON_CONFIG.input_path).convert('RGB')
 
     
-    if '<image>' in OCR_PROMPT:
+    if '<image>' in COMMON_CONFIG.ocr_prompt:
 
-        image_features = DeepseekOCRProcessor().tokenize_with_images(images = [image], bos=True, eos=True, cropping=CROP_MODE)
+        image_features = DeepseekOCRProcessor().tokenize_with_images(images = [image], bos=True, eos=True, cropping=COMMON_CONFIG.crop_mode)
     else:
         image_features = ''
 
-    prompt = OCR_PROMPT
+    prompt = COMMON_CONFIG.ocr_prompt
 
     result_out = asyncio.run(stream_generate(image_features, prompt))
 
@@ -235,7 +236,7 @@ if __name__ == "__main__":
 
         outputs = result_out
 
-        with open(f'{OUTPUT_PATH}/result_ori.md', 'w', encoding = 'utf-8') as afile:
+        with open(f'{COMMON_CONFIG.output_path}/result_ori.md', 'w', encoding = 'utf-8') as afile:
             afile.write(outputs)
 
         matches_ref, matches_images, mathes_other = re_match(outputs)
@@ -251,7 +252,7 @@ if __name__ == "__main__":
 
         # if 'structural formula' in conversation[0]['content']:
         #     outputs = '<smiles>' + outputs + '</smiles>'
-        with open(f'{OUTPUT_PATH}/result.md', 'w', encoding = 'utf-8') as afile:
+        with open(f'{COMMON_CONFIG.output_path}/result.md', 'w', encoding = 'utf-8') as afile:
             afile.write(outputs)
 
         if 'line_type' in outputs:
@@ -303,7 +304,7 @@ if __name__ == "__main__":
                 pass
 
 
-            plt.savefig(f'{OUTPUT_PATH}/geo.jpg')
+            plt.savefig(f'{COMMON_CONFIG.output_path}/geo.jpg')
             plt.close()
 
-        result.save(f'{OUTPUT_PATH}/result_with_boxes.jpg')
+        result.save(f'{COMMON_CONFIG.output_path}/result_with_boxes.jpg')

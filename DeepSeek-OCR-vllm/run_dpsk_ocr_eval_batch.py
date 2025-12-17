@@ -7,7 +7,7 @@ if torch.version.cuda == '11.8':
 os.environ['VLLM_USE_V1'] = '0'
 os.environ["CUDA_VISIBLE_DEVICES"] = '0'
 
-from config import OCR_MODEL_PATH, INPUT_PATH, OUTPUT_PATH, OCR_PROMPT, MAX_CONCURRENCY, CROP_MODE, NUM_WORKERS
+from config_loader import COMMON_CONFIG
 from concurrent.futures import ThreadPoolExecutor
 import glob
 from PIL import Image
@@ -29,7 +29,7 @@ llm = LLM(
     trust_remote_code=True, 
     max_model_len=8192,
     swap_space=0,
-    max_num_seqs = MAX_CONCURRENCY,
+    max_num_seqs = COMMON_CONFIG.max_concurrency,
     tensor_parallel_size=1,
     gpu_memory_utilization=0.9,
 )
@@ -83,7 +83,7 @@ def process_single_image(image):
     prompt_in = prompt
     cache_item = {
         "prompt": prompt_in,
-        "multi_modal_data": {"image": DeepseekOCRProcessor().tokenize_with_images(images = [image], bos=True, eos=True, cropping=CROP_MODE)},
+        "multi_modal_data": {"image": DeepseekOCRProcessor().tokenize_with_images(images = [image], bos=True, eos=True, cropping=COMMON_CONFIG.crop_mode)},
     }
     return cache_item
 
@@ -92,13 +92,13 @@ if __name__ == "__main__":
 
     # INPUT_PATH = OmniDocBench images path
 
-    os.makedirs(OUTPUT_PATH, exist_ok=True)
+    os.makedirs(COMMON_CONFIG.output_path, exist_ok=True)
 
     # print('image processing until processing prompts.....')
 
     print(f'{Colors.RED}glob images.....{Colors.RESET}')
 
-    images_path = glob.glob(f'{INPUT_PATH}/*')
+    images_path = glob.glob(f'{COMMON_CONFIG.input_path}/*')
 
     images = []
 
@@ -106,7 +106,7 @@ if __name__ == "__main__":
         image = Image.open(image_path).convert('RGB')
         images.append(image)
 
-    prompt = OCR_PROMPT
+    prompt = COMMON_CONFIG.ocr_prompt
 
     # batch_inputs = []
 
@@ -122,7 +122,7 @@ if __name__ == "__main__":
     #     ]
     #     batch_inputs.extend(cache_list)
 
-    with ThreadPoolExecutor(max_workers=NUM_WORKERS) as executor:  
+    with ThreadPoolExecutor(max_workers=COMMON_CONFIG.num_workers) as executor:  
         batch_inputs = list(tqdm(
             executor.map(process_single_image, images),
             total=len(images),
@@ -138,7 +138,7 @@ if __name__ == "__main__":
     )
 
 
-    output_path = OUTPUT_PATH
+    output_path = COMMON_CONFIG.output_path
 
     os.makedirs(output_path, exist_ok=True)
 

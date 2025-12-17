@@ -11,7 +11,15 @@ project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, project_root)
 
 from batch.batch_processor import BatchProcessor
-from batch.config import STAGE_OCR, STAGE_MD_IMAGE, STAGE_MD_TEXT, STAGE_MD_MERGED, STAGE_ALL
+# Import configurations
+from config_loader import BATCH_CONFIG
+
+# Define constants directly from configuration
+STAGE_OCR = 'raw'
+STAGE_MD_IMAGE = 'md_image'
+STAGE_MD_TEXT = 'md_text'
+STAGE_MD_MERGED = 'md_merged'
+STAGE_ALL = 'all'
 
 
 def main():
@@ -57,14 +65,26 @@ def main():
             if stage not in valid_stages:
                 print(f"Error: Invalid stage '{stage}'. Valid stages are: {', '.join(valid_stages)}")
                 sys.exit(1)
-    
+
     # Create and run batch processor
-    processor = BatchProcessor()
-    processor.process(
-        input_dir=args.input_dir,
-        output_dir=args.output_dir,
-        stages=stages
-    )
+    processor = None
+    try:
+        processor = BatchProcessor()
+        processor.process(
+            input_dir=args.input_dir,
+            output_dir=args.output_dir,
+            stages=stages
+        )
+    except Exception as e:
+        print(f"Error during processing: {e}")
+        raise
+    finally:
+        # 确保资源被释放
+        if processor is not None:
+            try:
+                processor.cleanup_vllm_engine()
+            except Exception as e:
+                print(f"Warning: Failed to cleanup vLLM engine: {e}")
 
 
 if __name__ == "__main__":

@@ -1,0 +1,15 @@
+# Shared configuration
+base_size: 1024
+image_size: 640
+crop_mode: true
+min_crops: 2
+max_crops: 6
+max_concurrency: 100
+num_workers: 64
+print_num_vis_tokens: false
+skip_repeat: true
+clean_ref_tags: false
+ocr_model_path: "/home/ai/.cache/modelscope/hub/models/deepseek-ai/DeepSeek-OCR"
+input_path: "/home/ai/deepseek-ocr/pdf-input/"
+output_path: "/home/ai/deepseek-ocr/pdf-output/"
+ocr_prompt: "<image>\n<|grounding|>Convert the document to markdown."

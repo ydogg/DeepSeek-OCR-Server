@@ -1,0 +1,23 @@
+# Server-specific configuration
+address: "0.0.0.0"
+port: 8001
+max_worker_threads: 1
+streaming_mode: false
+online_ocr_mode: true
+online_ocr_base_url: "http://localhost:8000/v1"
+online_ocr_model_name: "deepseek-ai/DeepSeek-OCR"
+online_ocr_api_key: "test"
+vl_model_base_url: "http://localhost:8000/v1"
+vl_model_api_key: "test"
+vl_model_name: "deepseek-ai/DeepSeek-OCR"
+vl_model_analysis_prompt: |
+  <image>/nAnalyze this image and provide a detailed description.
+  If it's a chart or graph, describe the data, trends, and key insights.
+  If it's a table, extract and present the data in a structured format.
+  If it's a diagram or flowchart, explain the process or relationships shown.
+  If it's a photograph, describe the content and context.
+enhancement_llm_base_url: "http://llm.necsoft.jn.com.cn:8000/v1"
+enhancement_llm_model_name: "qwen3-coder"
+enhancement_llm_api_key: "sk-1234"
+vl_model_enhancement_prompt: "如果文字内容描述了流程图等UML风格的内容，将这些文字转为mermaid格式，其他内容保留。"
+ocr_prompt: "<image>\n<|grounding|>Convert the document to markdown."

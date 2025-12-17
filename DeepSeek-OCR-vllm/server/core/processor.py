@@ -24,8 +24,7 @@ from vllm.engine.async_llm_engine import AsyncEngineDeadError
 
 from process.ngram_norepeat import NoRepeatNGramLogitsProcessor
 from process.image_process import DeepseekOCRProcessor
-from config import OCR_MODEL_PATH, OCR_PROMPT, CROP_MODE, MAX_CONCURRENCY
-from server.config import MAX_WORKER_THREADS
+from config_loader import COMMON_CONFIG, SERVER_CONFIG
 from server.schemas.models import OCRRequest
 from server.core.utils import clean_ref_tags
 
@@ -40,10 +39,10 @@ class ModelWorker:
 
     def initialize_model(self):
         """Initialize a single model instance with error handling"""
-        print(f"Initializing model with path: {OCR_MODEL_PATH}")
+        print(f"Initializing model with path: {COMMON_CONFIG.ocr_model_path}")
 
         engine_args = EngineArgs(
-            model=OCR_MODEL_PATH,
+            model=COMMON_CONFIG.ocr_model_path,
             hf_overrides={"architectures": ["DeepseekOCRForCausalLM"]},
             block_size=256,
             max_model_len=4096,
@@ -90,12 +89,12 @@ class ModelWorker:
 
         # Use default prompt if not provided
         if prompt is None:
-            prompt = OCR_PROMPT
+            prompt = COMMON_CONFIG.ocr_prompt
 
         # Process image
         if '<image>' in prompt:
             print("[OCR] Processing image with DeepseekOCRProcessor")
-            image_features = DeepseekOCRProcessor().tokenize_with_images(images=[image], bos=True, eos=True, cropping=CROP_MODE)
+            image_features = DeepseekOCRProcessor().tokenize_with_images(images=[image], bos=True, eos=True, cropping=COMMON_CONFIG.crop_mode)
         else:
             image_features = ''
 
@@ -186,7 +185,7 @@ class OCRProcessor:
         self.result_dict: Dict[str, dict] = {}
         self.shutdown_event = Event()
         self.workers = []
-        self.max_models = min(2, MAX_WORKER_THREADS)  # Default to 1, max 2
+        self.max_models = min(2, SERVER_CONFIG.max_worker_threads)  # Default to 1, max 2
 
     def start_workers(self):
         """Initialize and start worker threads"""
@@ -233,8 +232,3 @@ class OCRProcessor:
         return all_workers_alive and shutdown_not_set
 
 
-def load_image_from_base64(image_str: str) -> Image.Image:
-    """Load PIL Image from base64 string"""
-    image_data = base64.b64decode(image_str)
-    image = Image.open(io.BytesIO(image_data))
-    return image.convert('RGB')
