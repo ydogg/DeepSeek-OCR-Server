@@ -50,11 +50,14 @@ def _get_selected_processor():
     """Get the appropriate processor based on ONLINE_OCR_MODE environment variable"""
     online_mode = os.getenv('ONLINE_OCR_MODE', 'false').lower() == 'true'
     if online_mode:
+        # In online mode, don't try to import offline processor to avoid heavy dependencies
         return get_online_processor()
     else:
         return get_offline_processor()
 
 # Global processor instance for backward compatibility
+# Note: This is deprecated and should not be used in new code
+# Use processor parameters in functions instead
 processor = _get_selected_processor()
 
 # Note: The processor selection is now done in the entry point files
