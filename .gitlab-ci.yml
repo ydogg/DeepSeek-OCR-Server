@@ -23,7 +23,7 @@ build_image_job:
       --skip-tls-verify
       --context "${CI_PROJECT_DIR}/DeepSeek-OCR-vllm"
       --dockerfile "${CI_PROJECT_DIR}/DeepSeek-OCR-vllm/docker/Dockerfile.online"
-      --destination "$IMAGE_NAME"
+      --destination "$HARBOR_HOST/$HARBOR_PROJECT/deepSeekocrserver:test"
   artifacts:
     paths:
       - artifacts
