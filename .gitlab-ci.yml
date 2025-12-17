@@ -20,7 +20,7 @@ build_image_job:
     - /kaniko/executor
       --skip-tls-verify
       --context "${CI_PROJECT_DIR}/DeepSeek-OCR-vllm"
-      --dockerfile "${CI_PROJECT_DIR}/docker/Dockerfile.offline"
+      --dockerfile "${CI_PROJECT_DIR}/DeepSeek-OCR-vllm/docker/Dockerfile.offline"
       --destination "$IMAGE_NAME"
   artifacts:
     paths:
