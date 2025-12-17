@@ -62,12 +62,13 @@ class BatchProcessor:
         self.batch_config = BATCH_CONFIG
         self.ocr_config = get_ocr_config()
         self.processing_config = get_processing_config()
-
-        # Initialize vLLM engine for OCR processing
-        self._initialize_vllm_engine()
+        self.llm = None  # 延迟初始化
 
     def _initialize_vllm_engine(self):
         """Initialize vLLM engine for batch OCR processing"""
+        if self.llm is not None:
+            return  # 已经初始化
+
         try:
             print(f"Initializing model with path: {self.ocr_config['model_path']}")
             ModelRegistry.register_model("DeepseekOCRForCausalLM", DeepseekOCRForCausalLM)
@@ -101,11 +102,35 @@ class BatchProcessor:
             print("LLM engine initialized successfully")
         except Exception as e:
             print(f"Failed to initialize model: {e}")
+            self.llm = None
             raise
+
+    def cleanup_vllm_engine(self):
+        """Clean up vLLM engine and release GPU resources"""
+        if self.llm is not None:
+            print("Cleaning up vLLM engine...")
+
+            # 显式删除LLM实例
+            del self.llm
+            self.llm = None
+
+            # 强制清理GPU内存缓存
+            try:
+                import torch
+                # 同步确保所有GPU操作完成
+                torch.cuda.synchronize()
+                # 释放缓存的GPU内存
+                torch.cuda.empty_cache()
+                print("GPU memory cache cleared")
+            except Exception as e:
+                print(f"Warning: Failed to clear CUDA cache: {e}")
 
     def process_ocr_batch(self, image_paths):
         """First stage: OCR batch processing using vLLM"""
         print(f"Processing OCR for {len(image_paths)} images...")
+
+        # 初始化vLLM引擎（如果尚未初始化）
+        self._initialize_vllm_engine()
 
         # Load images
         images = []
@@ -137,6 +162,9 @@ class BatchProcessor:
         raw_results = []
         for output in outputs_list:
             raw_results.append(output.outputs[0].text)
+
+        # 处理完成后立即清理资源
+        self.cleanup_vllm_engine()
 
         return raw_results
 
