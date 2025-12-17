@@ -28,7 +28,7 @@ from common.image_processing import (
 from common.text_processing import re_match
 
 
-async def dowith_ocr_request(image: Image.Image, prompt: str = None, request_id: str = None, level: str = "md_text") -> dict:
+async def dowith_ocr_request(image: Image.Image, prompt: str = None, request_id: str = None, level: str = "md_text", processor=None) -> dict:
     """
     Common OCR processing method that works with both online and offline processors.
     Handles all levels of processing: raw, md_image, md_text, and md_merged.
@@ -38,6 +38,7 @@ async def dowith_ocr_request(image: Image.Image, prompt: str = None, request_id:
         prompt: OCR prompt to use (defaults to OCR_PROMPT if None)
         request_id: Request ID (generates new one if None)
         level: Processing level - "raw", "md_image", "md_text", or "md_merged"
+        processor: Processor instance to use (defaults to global processor if None)
 
     Returns:
         dict: OCR result with status and result/error
@@ -50,12 +51,13 @@ async def dowith_ocr_request(image: Image.Image, prompt: str = None, request_id:
     if request_id is None:
         request_id = f"req-{uuid.uuid4().hex[:12]}"
 
+    # Use provided processor or fall back to global processor
+    if processor is None:
+        from server.core.instances import processor as global_processor
+        processor = global_processor
+
     print(f"[OCR Common] Processing OCR request with ID: {request_id}, level: {level}")
     print(f"[OCR Common] Request details - Image size: {image.size if image else 'Unknown'}, Prompt length: {len(prompt) if prompt else 0}")
-
-    # Import ONLINE_OCR_MODE to determine processing mode
-    from config_loader import SERVER_CONFIG
-    ONLINE_OCR_MODE = SERVER_CONFIG.online_ocr_mode
 
     try:
         # For online mode, we want to avoid multiple OCR calls

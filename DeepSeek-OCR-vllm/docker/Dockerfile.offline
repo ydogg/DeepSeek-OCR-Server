@@ -4,7 +4,6 @@ FROM python:3.12-slim
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
-ENV ONLINE_OCR_MODE=true
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -20,9 +19,9 @@ RUN pip install --upgrade pip -i https://pypi.tuna.tsinghua.edu.cn/simple --cert
 COPY server/requirements.txt /app/server/requirements.txt
 COPY gradio/requirements.txt /app/gradio/requirements.txt
 
-# Install Python dependencies for online OCR mode
-# Online mode requires only lightweight dependencies
-RUN pip install -r /app/server/requirements_online.txt -i https://pypi.tuna.tsinghua.edu.cn/simple --cert ./ZscalerRootCertificate.crt
+# Install Python dependencies for offline OCR mode
+# Offline mode requires all dependencies including heavy packages
+RUN pip install -r /app/server/requirements_offline.txt -i https://pypi.tuna.tsinghua.edu.cn/simple --cert ./ZscalerRootCertificate.crt
 RUN pip install -r /app/gradio/requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple --cert ./ZscalerRootCertificate.crt
 
 # Copy the application code
@@ -34,11 +33,11 @@ WORKDIR /app
 # Expose ports for server (8001) and gradio (7861)
 EXPOSE 8001 7861
 
-# Create a startup script for online OCR mode
+# Create a startup script for offline OCR mode
 RUN echo '#!/bin/bash\n\
-echo "Starting DeepSeek OCR services in ONLINE mode..."\n\
+echo "Starting DeepSeek OCR services in OFFLINE mode..."\n\
 echo "Starting server in background..."\n\
-./server/start_server_online.sh &\n\
+./server/start_server_offline.sh &\n\
 SERVER_PID=$!\n\
 echo "Starting Gradio interface in background..."\n\
 cd gradio && python app.py &\n\
