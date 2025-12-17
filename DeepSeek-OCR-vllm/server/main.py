@@ -40,8 +40,8 @@ from server.api import (
     call_vl_model
 )
 
-# Import load_image_from_base64 function from processor
-from server.core.processor import load_image_from_base64
+# Import load_image_from_base64 function (should be lightweight)
+from server.core.utils import load_image_from_base64
 
 # Register the model
 ModelRegistry.register_model("DeepseekOCRForCausalLM", DeepseekOCRForCausalLM)

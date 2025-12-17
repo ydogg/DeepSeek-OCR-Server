@@ -14,11 +14,6 @@ from PIL import Image
 from config_loader import BATCH_CONFIG
 
 
-def load_image_from_base64(image_str: str) -> Image.Image:
-    """Load PIL Image from base64 string"""
-    image_data = base64.b64decode(image_str)
-    image = Image.open(io.BytesIO(image_data))
-    return image.convert('RGB')
 
 
 def analyze_extracted_images_sync(ocr_result: str, request_id_with_timestamp: str, request_output_path: str):

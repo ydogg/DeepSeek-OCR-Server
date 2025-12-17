@@ -232,8 +232,3 @@ class OCRProcessor:
         return all_workers_alive and shutdown_not_set
 
 
-def load_image_from_base64(image_str: str) -> Image.Image:
-    """Load PIL Image from base64 string"""
-    image_data = base64.b64decode(image_str)
-    image = Image.open(io.BytesIO(image_data))
-    return image.convert('RGB')
