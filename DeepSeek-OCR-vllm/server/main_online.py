@@ -48,13 +48,13 @@ from server.api import (
 )
 
 # Import load_image_from_base64 function (should be lightweight)
-from server.core.processor import load_image_from_base64
+from server.core.utils import load_image_from_base64
 
 # Import only the online processor instance
-from server.core.instances import online_processor
+from server.core.instances import get_online_processor
 
 # Use the online processor for this mode
-processor = online_processor
+processor = get_online_processor()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -85,17 +85,12 @@ app = FastAPI(
 )
 
 # Import routes after app creation to avoid circular imports
-from server.api import (
-    chat_completions,
-    ocr_endpoint,
-    ocr_image_endpoint,
-    health_check
-)
+# Note: These functions are now defined in api.py
+from server.api import chat_completions, ocr_endpoint, health_check
 
 # Add routes
 app.add_api_route("/v1/chat/completions", chat_completions, methods=["POST"])
-app.add_api_route("/v1/images/ocr", ocr_endpoint, methods=["POST"])
-app.add_api_route("/v1/images/ocr_image", ocr_image_endpoint, methods=["POST"])
+app.add_api_route("/v1/ocr", ocr_endpoint, methods=["POST"])
 app.add_api_route("/health", health_check, methods=["GET"])
 
 if __name__ == "__main__":
