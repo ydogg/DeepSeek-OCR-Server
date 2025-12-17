@@ -1,5 +1,5 @@
 # Use Python 3.12 base image
-FROM python:3.12-slim
+FROM dockerhub.oss.necsoft.jn.com.cn/necjn/python:3.12-slim
 
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive
