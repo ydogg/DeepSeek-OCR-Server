@@ -1,0 +1,81 @@
+stages:
+  - build
+  - scan
+  - deploy
+
+build_image_job:
+  stage: build
+  image:
+    name: dockerhub.oss.necsoft.jn.com.cn/necjn/gcr.io/kaniko-project/executor:debug
+    entrypoint: [""]
+  script:
+    # 增加创建时戳
+    - TS=$(date +%Y%m%d%H%M%S)
+
+    # 制作镜像
+    - echo "{\"auths\":{\"${HARBOR_HOST}\":{\"auth\":\"$(printf "%s:%s" "${HARBOR_USERNAME}" "${HARBOR_PASSWORD}" | base64 | tr -d '\n')\"}}}" > /kaniko/.docker/config.json
+    - IMAGE_NAME="$HARBOR_HOST/$HARBOR_PROJECT/deepseek-ocr-server:online-$TS"
+    - echo "IMAGE_NAME=$IMAGE_NAME" >> variables.env
+    - /kaniko/executor
+      --skip-tls-verify
+      --context "${CI_PROJECT_DIR}/DeepSeek-OCR-vllm"
+      --dockerfile "${CI_PROJECT_DIR}/DeepSeek-OCR-vllm/docker/Dockerfile.online"
+      --destination "$IMAGE_NAME"
+  artifacts:
+    paths:
+      - artifacts
+    reports:
+      dotenv: variables.env
+  tags:
+    - necjn
+    - kubernetes
+
+include:
+  - template: Jobs/Container-Scanning.gitlab-ci.yml
+
+container_scanning:
+  stage: scan
+  variables:
+      SECURE_LOG_LEVEL: 'debug'
+      CS_IMAGE: "${IMAGE_NAME}"
+      CS_REGISTRY_USER: "$HARBOR_USERNAME"
+      CS_REGISTRY_PASSWORD: "$HARBOR_PASSWORD"
+      CS_DOCKERFILE_PATH: "${CI_PROJECT_DIR}/Dockerfile"
+  dependencies:
+    - build_image_job
+    
+deploy_to_k8s_push_mode_argocd:
+  stage: deploy
+  image:
+    name: dockerhub.oss.necsoft.jn.com.cn/necjn/kubectlargocd:v1.30.2v2.11
+    entrypoint: [""]
+  script:
+    # switch kuberntes context
+    - sed -i 's@http://@https://@g' $KUBECONFIG
+    - kubectl config use-context necjn/ai-divination:divination-k8s-27
+    
+    # modify manifests with latest image name
+    ## 配置文件的环境变量指定(镜像工作目录下只读)
+    - git clone http://wang-yg%40nec.cn:123456a%3F@gitlab.devp.oss.necsoft.jn.com.cn/necjn/DeepSeek-OCR-Server-manifests.git
+    - cd ai-divination-manifests
+    - sed -i -E "s@(^[[:space:]]*image:[[:space:]]+).*@\1${IMAGE_NAME}@" deploy/overlays/${CI_COMMIT_REF_NAME}/deployment-patch.yaml
+    - cat deploy/overlays/${CI_COMMIT_REF_NAME}/deployment-patch.yaml
+    - git config user.email "wang-yg@nec.com"
+    - git config user.name "Gitlab-CICD"
+    - git add -u .
+    - git status
+    - git commit -m "${CI_COMMIT_REF_NAME} - ${IMAGE_NAME}"
+    - git push
+
+    # manually deploy with argocd 
+    #- kubectl --insecure-skip-tls-verify apply -k deploy/overlays/${CI_COMMIT_REF_NAME}
+    #- export ARGOCD_OPTS="--config=~/.config/argocd/config"
+    #- argocd login 172.28.74.27:30932 --insecure --username admin --password 123456a?
+    #- argocd app sync ai-divination
+    #- argocd app wait ai-divination
+    #- argocd logout 172.28.74.27:30932
+  dependencies:
+    - build_image_job
+  tags:
+    - necjn
+    - kubernetes
