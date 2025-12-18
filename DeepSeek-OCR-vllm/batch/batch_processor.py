@@ -39,6 +39,9 @@ from common.config_utils import get_ocr_config, get_processing_config
 # Import configurations
 from config_loader import BATCH_CONFIG, COMMON_CONFIG
 
+# Import format enhancement functions
+from batch.format_enhancement import enhance_results_batch
+
 # Define constants directly from configuration
 STAGE_OCR = 'raw'
 STAGE_MD_IMAGE = 'md_image'
@@ -177,7 +180,9 @@ class BatchProcessor:
             clean_result = clean_ref_tags(result)
             clean_results.append(clean_result)
 
-        return clean_results
+        # Apply format enhancement
+        enhanced_results = enhance_results_batch(clean_results, STAGE_MD_TEXT)
+        return enhanced_results
 
     def process_md_image_batch(self, raw_results, image_paths):
         """New stage: md_image batch processing (keep image tags)"""
@@ -193,7 +198,9 @@ class BatchProcessor:
             md_image_result = convert_image_tags_to_md(md_image_result)
             md_image_results.append(md_image_result)
 
-        return md_image_results
+        # Apply format enhancement
+        enhanced_results = enhance_results_batch(md_image_results, STAGE_MD_IMAGE)
+        return enhanced_results
 
     def _copy_processed_images_for_md_image(self, image_paths):
         """Copy processed images from processed_images directory to md_image directories"""
@@ -282,7 +289,9 @@ class BatchProcessor:
                 # Just use the processed result with bounding boxes
                 image_clean_results.append(processed_result)
 
-        return image_clean_results
+        # Apply format enhancement
+        enhanced_results = enhance_results_batch(image_clean_results, STAGE_MD_MERGED)
+        return enhanced_results
 
     def save_results(self, results, image_paths, stage):
         """Save results to output directory with simplified structure"""
@@ -315,6 +324,21 @@ class BatchProcessor:
 
             with open(output_path, 'w', encoding='utf-8') as f:
                 f.write(result)
+
+            # Save enhanced result if format enhancement is enabled and stage is not raw
+            if (hasattr(BATCH_CONFIG, 'format_enhancement_enabled') and
+                BATCH_CONFIG.format_enhancement_enabled and
+                stage != STAGE_OCR):
+
+                if stage == STAGE_MD_IMAGE:
+                    # For md_image, save in the same subdirectory
+                    enhanced_output_path = os.path.join(request_output_path, "result_enhanced.md")
+                else:
+                    # For other stages, save in the stage directory
+                    enhanced_output_path = os.path.join(output_dir, f"{name}_enhanced.md")
+
+                with open(enhanced_output_path, 'w', encoding='utf-8') as f:
+                    f.write(result)  # result is already enhanced at this point
 
         print(f"Saved {len(results)} {stage} results to {output_dir}")
 
