@@ -29,6 +29,10 @@ build_image_job:
   tags:
     - necjn
     - kubernetes
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: on_success
+    - when: never
 
 include:
   - template: Jobs/Container-Scanning.gitlab-ci.yml
@@ -43,6 +47,10 @@ container_scanning:
       CS_DOCKERFILE_PATH: "${CI_PROJECT_DIR}/Dockerfile"
   dependencies:
     - build_image_job
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: on_success
+    - when: never
     
 deploy_to_k8s_push_mode_argocd:
   stage: deploy
@@ -56,7 +64,7 @@ deploy_to_k8s_push_mode_argocd:
     
     # modify manifests with latest image name
     ## 配置文件的环境变量指定(镜像工作目录下只读)
-    - git clone http://wang-yg%40nec.cn:123456a%3F@gitlab.devp.oss.necsoft.jn.com.cn/necjn/deepseek-ocr-server-manifests.git
+    - git clone http://oauth2:${MANIFEST_REPO_TOKEN}@gitlab.devp.oss.necsoft.jn.com.cn/necjn/deepseek-ocr-server-manifests.git
     - cd deepseek-ocr-server-manifests
     - sed -i -E "s@(^[[:space:]]*image:[[:space:]]+).*@\1${IMAGE_NAME}@" deploy/overlays/${CI_COMMIT_REF_NAME}/deployment-patch.yaml
     - cat deploy/overlays/${CI_COMMIT_REF_NAME}/deployment-patch.yaml
@@ -79,3 +87,7 @@ deploy_to_k8s_push_mode_argocd:
   tags:
     - necjn
     - kubernetes
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: on_success
+    - when: never
