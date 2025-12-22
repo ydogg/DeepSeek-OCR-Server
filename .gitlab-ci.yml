@@ -57,7 +57,7 @@ deploy_to_k8s_push_mode_argocd:
     # modify manifests with latest image name
     ## 配置文件的环境变量指定(镜像工作目录下只读)
     - git clone http://wang-yg%40nec.cn:123456a%3F@gitlab.devp.oss.necsoft.jn.com.cn/necjn/DeepSeek-OCR-Server-manifests.git
-    - cd deepseek-ocr-server--manifests
+    - cd deepseek-ocr-server-manifests
     - sed -i -E "s@(^[[:space:]]*image:[[:space:]]+).*@\1${IMAGE_NAME}@" deploy/overlays/${CI_COMMIT_REF_NAME}/deployment-patch.yaml
     - cat deploy/overlays/${CI_COMMIT_REF_NAME}/deployment-patch.yaml
     - git config user.email "wang-yg@nec.com"
