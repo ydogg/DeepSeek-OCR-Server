@@ -39,6 +39,7 @@ from server.api import (
     draw_bounding_boxes,
     analyze_extracted_images,
     enhance_vl_output,
+    enhance_text_format,
     call_vl_model
 )
 

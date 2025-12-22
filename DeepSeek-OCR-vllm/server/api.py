@@ -166,7 +166,23 @@ async def dowith_ocr_request(image: Image.Image, prompt: str = None, request_id:
             print(f"[OCR Common] Unknown level '{level}', returning raw result, length: {len(raw_result)}")
             final_result = raw_result
 
-        print(f"[OCR Common] Returning result with length: {len(final_result)}")
+        # Step 5: Format enhancement (applied to all levels except raw)
+        if level != "raw":
+            print(f"[OCR Common] Starting format enhancement for request {request_id}")
+            enhanced_result = await enhance_text_format(final_result)
+            print(f"[OCR Common] Format enhancement completed for request {request_id}")
+
+            # Save enhanced result if we have an output path
+            if request_output_path:
+                with open(f"{request_output_path}/result_enhanced.md", "w", encoding="utf-8") as f:
+                    f.write(enhanced_result)
+
+            # Use enhanced result as final result
+            final_result = enhanced_result
+        else:
+            print(f"[OCR Common] Skipping format enhancement for raw level")
+
+        print(f"[OCR Common] Returning enhanced result with length: {len(final_result)}")
         return {
             "status": "success",
             "result": final_result,
@@ -476,6 +492,88 @@ async def enhance_vl_output(text_content: str):
         import traceback
         print(f"[VL Enhancement] Full traceback: {traceback.format_exc()}")
         return "Output enhancement failed"
+
+
+async def enhance_text_format(text_content: str):
+    """
+    Call the LLM API to enhance text format and quality using OpenAI client
+    """
+    try:
+        print(f"[Format Enhancement] Starting LLM call for text format enhancement")
+
+        # Check if format enhancement is enabled
+        if not hasattr(SERVER_CONFIG, 'format_enhancement_enabled') or not SERVER_CONFIG.format_enhancement_enabled:
+            print(f"[Format Enhancement] Format enhancement is disabled, returning original text")
+            return text_content
+
+        # Import OpenAI client
+        from openai import AsyncOpenAI
+
+        # Initialize OpenAI client with format enhancement configuration
+        client = AsyncOpenAI(
+            base_url=SERVER_CONFIG.format_enhancement_base_url,
+            api_key=SERVER_CONFIG.format_enhancement_api_key or "sk-test"  # Use test key if none provided
+        )
+
+        # Prepare the request with format enhancement prompt
+        format_prompt = getattr(SERVER_CONFIG, 'format_enhancement_prompt',
+            "请对以下OCR识别的文本内容进行格式优化和增强，修正识别错误，优化文档结构。")
+
+        full_prompt = f"{format_prompt}\n\n```\n{text_content}\n```"
+
+        messages = [
+            {
+                "role": "user",
+                "content": full_prompt
+            }
+        ]
+
+        model_name = getattr(SERVER_CONFIG, 'format_enhancement_model_name', 'qwen3-coder')
+        print(f"[Format Enhancement] Request messages prepared")
+        print(f"[Format Enhancement] Model: {model_name}")
+        print(f"[Format Enhancement] Original text length: {len(text_content)}")
+
+        # Make the API call using OpenAI client
+        base_url = getattr(SERVER_CONFIG, 'format_enhancement_base_url', 'http://localhost:8000/v1')
+        print(f"[Format Enhancement] Making API call to {base_url}")
+        response = await client.chat.completions.create(
+            model=model_name,
+            messages=messages,
+            max_tokens=8192,  # Allow more tokens for format enhancement
+            temperature=0.1  # Lower temperature for more consistent formatting
+        )
+
+        print(f"[Format Enhancement] API call completed successfully")
+
+        # Process the response
+        if response and response.choices:
+            enhanced_text = response.choices[0].message.content
+            if enhanced_text:
+                # Clean up the response - remove any extra formatting
+                enhanced_text = enhanced_text.strip()
+                # Remove potential code block markers if present
+                if enhanced_text.startswith('```'):
+                    lines = enhanced_text.split('\n')
+                    if len(lines) > 1:
+                        enhanced_text = '\n'.join(lines[1:-1]) if enhanced_text.endswith('```') else '\n'.join(lines[1:])
+                enhanced_text = enhanced_text.strip()
+
+                print(f"[Format Enhancement] Enhanced text length: {len(enhanced_text)}")
+                return enhanced_text
+            else:
+                print(f"[Format Enhancement] Empty response received")
+                return text_content  # Return original if enhancement failed
+        else:
+            print(f"[Format Enhancement] No response or choices in response")
+            return text_content  # Return original if enhancement failed
+
+    except Exception as e:
+        print(f"[Format Enhancement] Exception in enhance_text_format: {str(e)}")
+        # Add more detailed error information
+        import traceback
+        print(f"[Format Enhancement] Full traceback: {traceback.format_exc()}")
+        print(f"[Format Enhancement] Returning original text due to enhancement failure")
+        return text_content  # Return original text if enhancement failed
 
 
 async def call_vl_model(image_base64: str):
