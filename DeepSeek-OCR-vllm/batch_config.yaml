@@ -18,7 +18,7 @@ enhancement_llm_model_name: "qwen3-coder"
 enhancement_llm_api_key: "test"
 vl_model_enhancement_prompt: "如果文字内容描述了流程图等UML风格的内容，将这些文字转为mermaid格式，其他无关文字直接保留即可。"
 # Format enhancement configuration
-format_enhancement_enabled: true
+format_enhancement_enabled: false
 format_enhancement_model_name: "qwen3-coder"
 format_enhancement_base_url: "http://llm.necsoft.jn.com.cn:4000/v1"
 format_enhancement_api_key: "test"
@@ -26,4 +26,5 @@ format_enhancement_prompt: |
   改善一下MD文档的格式，比如用```标注代码等，注意前后都要有。但不要修改格式以外的任何内容，也不要输出任何其他内容。
 
   原始文本：
-ocr_prompt: "<image>\n<|grounding|>Convert the document to markdown."
+#ocr_prompt: "<image>\n<|grounding|>Convert the document to markdown."
+ocr_prompt: "<image>\nFree OCR."

@@ -93,7 +93,8 @@ with gr.Blocks(title="NECJN Document->MarkDown Service UI") as demo:
             level_input = gr.Radio(
                 choices=["raw", "md_image", "md_text", "md_merged"],
                 value="md_text",
-                label="Processing Level"
+                label="Processing Level",
+                info="选择处理级别：raw-原始结果(含ref/det标签)，md_image-保留图片标签的Markdown，md_text-纯文本Markdown，md_merged-完整分析(含图片提取和VL分析)"
             )
             submit_btn = gr.Button("Process Image")
             

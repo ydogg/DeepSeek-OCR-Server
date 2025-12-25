@@ -38,7 +38,7 @@ class OnlineOCRProcessor:
         # For online mode, processing happens directly
 
         # Use default prompt from config if none provided
-        prompt = ocr_request.prompt if ocr_request.prompt is not None else COMMON_CONFIG.ocr_prompt
+        prompt = ocr_request.prompt if ocr_request.prompt is not None else SERVER_CONFIG.ocr_prompt
         #print(f"[Online OCR] Using prompt: {repr(prompt)}")
 
         try:

@@ -59,7 +59,7 @@ class OCRImageRequest(BaseModel):
 
 class OCRRequest:
     def __init__(self, request_id: str, image, prompt: str = None):
-        from config_loader import COMMON_CONFIG
+        from config_loader import SERVER_CONFIG
         self.request_id = request_id
         self.image = image
-        self.prompt = prompt or COMMON_CONFIG.ocr_prompt
+        self.prompt = prompt or SERVER_CONFIG.ocr_prompt

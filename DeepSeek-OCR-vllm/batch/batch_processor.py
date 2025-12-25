@@ -65,6 +65,8 @@ class BatchProcessor:
         self.batch_config = BATCH_CONFIG
         self.ocr_config = get_ocr_config()
         self.processing_config = get_processing_config()
+        # Override OCR prompt with batch-specific configuration
+        self.ocr_config['prompt'] = self.batch_config.ocr_prompt
         self.llm = None  # 延迟初始化
 
     def _initialize_vllm_engine(self):
