@@ -54,7 +54,7 @@ async def dowith_ocr_request(image: Image.Image, prompt: str = None, request_id:
     """
     # Use provided prompt or default from config
     if prompt is None:
-        prompt = COMMON_CONFIG.ocr_prompt
+        prompt = SERVER_CONFIG.ocr_prompt
 
     # Generate request ID if not provided
     if request_id is None:
@@ -689,7 +689,7 @@ async def chat_completions(request: ChatCompletionRequest, processor=None):
         raise HTTPException(status_code=400, detail="No image data found in request")
 
     # Use provided text prompt or default from config
-    prompt = text_prompt if text_prompt is not None else COMMON_CONFIG.ocr_prompt
+    prompt = text_prompt if text_prompt is not None else SERVER_CONFIG.ocr_prompt
     print(f"[OCR Main] Using prompt length: {len(prompt) if prompt else 0}")
 
     try:
@@ -756,7 +756,7 @@ async def ocr_endpoint(request: OCRImageRequest, processor=None):
         print(f"[OCR Main] Image decoded, size: {img.size if img else 'Unknown'}")
 
         # Use provided prompt or default from config
-        prompt = request.prompt if request.prompt is not None else COMMON_CONFIG.ocr_prompt
+        prompt = request.prompt if request.prompt is not None else SERVER_CONFIG.ocr_prompt
         print(f"[OCR Main] Using prompt length: {len(prompt) if prompt else 0}")
 
         # Process OCR using common method with specified level

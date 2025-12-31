@@ -89,7 +89,7 @@ class ModelWorker:
 
         # Use default prompt if not provided
         if prompt is None:
-            prompt = COMMON_CONFIG.ocr_prompt
+            prompt = SERVER_CONFIG.ocr_prompt
 
         # Process image
         if '<image>' in prompt:

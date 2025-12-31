@@ -21,7 +21,7 @@ enhancement_llm_model_name: "qwen3-coder"
 enhancement_llm_api_key: "sk-1234"
 vl_model_enhancement_prompt: "如果文字内容描述了流程图等UML风格的内容，将这些文字转为mermaid格式，其他内容保留。"
 # Format enhancement configuration
-format_enhancement_enabled: true
+format_enhancement_enabled: false
 format_enhancement_model_name: "qwen3-coder"
 format_enhancement_base_url: "http://llm.necsoft.jn.com.cn:8000/v1"
 format_enhancement_api_key: "sk-1234"

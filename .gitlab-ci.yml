@@ -8,6 +8,8 @@ build_image_job:
   image:
     name: dockerhub.oss.necsoft.jn.com.cn/necjn/gcr.io/kaniko-project/executor:debug
     entrypoint: [""]
+  only:
+    - main
   script:
     # 增加创建时戳
     - TS=$(date +%Y%m%d%H%M%S)
@@ -39,6 +41,8 @@ include:
 
 container_scanning:
   stage: scan
+  only:
+    - main
   variables:
       SECURE_LOG_LEVEL: 'debug'
       CS_IMAGE: "${IMAGE_NAME}"
@@ -57,6 +61,8 @@ deploy_to_k8s_push_mode_argocd:
   image:
     name: dockerhub.oss.necsoft.jn.com.cn/necjn/kubectlargocd:v1.30.2v2.11
     entrypoint: [""]
+  only:
+    - main
   script:
     # switch kuberntes context
     - sed -i 's@http://@https://@g' $KUBECONFIG
